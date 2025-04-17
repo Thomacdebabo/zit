@@ -4,6 +4,11 @@ import click
 from .storage import Storage
 from datetime import datetime
 from .storage import Event
+
+from .calculate import calculate_project_times
+from .print import pretty_print_title, print_intervals, print_project_times, print_ongoing_interval, print_total_time, print_events_with_index
+from .verify import verify_lunch, verify_stop
+
 @click.group()
 def cli():
     """Zit - Zimple Interval Tracker: A minimal time tracking CLI tool"""
@@ -28,46 +33,102 @@ def stop():
     storage.add_event(Event(timestamp=datetime.now(), project="STOP"))
 
 @cli.command()
-def status():
+@click.option('--yesterday', is_flag=True, help='Show status for yesterday')
+def status(yesterday):
     """Show current tracking status"""
     storage = Storage()
-    events = storage._read_events()
+    
+    if yesterday:
+        storage.set_to_yesterday()
+    
+    events = storage.get_events()
     
     if not events:
-        click.echo("No events found for today.")
+        day = "yesterday" if yesterday else "today"
+        click.echo(f"No events found for {day}.")
         return
-    project_times = {}
-    click.echo("--------------------------------")
-    click.echo("Current status...")
-    click.echo("--------------------------------")
-    for i in range(1, len(events)):
-        start_event = events[i-1]
-        end_event = events[i]
-        start_time = datetime.fromisoformat(start_event[0])
-        end_time = datetime.fromisoformat(end_event[0])
-        interval = end_time - start_time
-        project = start_event[1]  # Get the project name from the event
-        hours, remainder = divmod(interval.total_seconds(), 3600)
-        minutes, seconds = divmod(remainder, 60)
-        click.echo(f"{project} - {int(hours)}:{int(minutes)}:{int(seconds)}")
-        project_times[project] = project_times.get(project, 0) + interval.total_seconds()
-
-    for event in events:
-        if event[1] == "STOP":
-            break
-        click.echo(f"Ongoing project: {event[1]}")
-    # time per project
-    click.echo("Time per project:")
-    click.echo("--------------------------------")
-    sum = 0
-    for project, total_time in project_times.items():
-        hours, remainder = divmod(total_time, 3600)
-        minutes, seconds = divmod(remainder, 60)
-        click.echo(f"{project} - {int(hours)}:{int(minutes)}:{int(seconds)}")
-        if project != "STOP":
-            sum += total_time
-    click.echo("--------------------------------")
-    click.echo(f"Total time: {int(sum / 3600)}:{int((sum % 3600) / 60)}:{int(sum % 60)}")
     
+    pretty_print_title("Current status...")
+    print_intervals(events)
+    print_ongoing_interval(events[-1])
+
+    project_times, sum, excluded = calculate_project_times(events, exclude_projects=storage.exclude_projects)
+    
+    print_project_times(project_times)
+    print_total_time(sum, excluded)
+
+
+@cli.command()
+@click.argument('project')
+@click.argument('time', metavar='TIME (format: HHMM)')
+def add(project, time):
+    """Add a project with a specific time (format: HHMM, e.g. 1200 for noon)"""
+    try:
+        # Parse the time format (HHMM)
+        if len(time) != 4 or not time.isdigit():
+            click.echo("Error: Time must be in HHMM format (e.g., 1200 for noon)", err=True)
+            return
+            
+        hour = int(time[:2])
+        minute = int(time[2:])
+        
+        if hour < 0 or hour > 23 or minute < 0 or minute > 59:
+            click.echo("Error: Invalid time values", err=True)
+            return
+            
+        # Create a datetime object for today with the specified time
+        now = datetime.now()
+        event_time = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+
+        storage = Storage()
+        storage.add_event(Event(timestamp=event_time, project=project))
+        click.echo(f"Added project: {project} at {event_time.strftime('%H:%M')}")
+    except ValueError as e:
+        click.echo(f"Error: {str(e)}", err=True)
+
+@cli.command()
+def clear():
+    """Clear all data"""
+    storage = Storage()
+    storage.remove_data_file()
+    click.echo("All data has been cleared.")
+
+@cli.command()
+def clean():
+    """Clean the data"""
+    storage = Storage()
+    storage.clean_storage()
+    click.echo("Data has been cleaned.")
+
+@cli.command()
+def verify():
+    """Verify the data"""
+    storage = Storage()
+    events = storage.get_events()
+    if verify_lunch(events):
+        click.echo("✓ LUNCH event found")
+    else:
+        click.echo("✗ LUNCH event not found")
+    if verify_stop(events):
+        click.echo("✓ final STOP event found")
+    else:
+        click.echo("✗ final STOP event not found")
+@cli.command()
+def remove():
+    """Remove the last event"""
+    storage = Storage()
+    events = storage.get_events()
+    if len(events) == 0:
+        click.echo("No events found. Operation aborted.")
+        return
+    print_events_with_index(events)
+    index = click.prompt("Enter the index of the event to remove", type=int)
+    if index < 0 or index >= len(events):
+        click.echo("Invalid index. Operation aborted.")
+        return
+    events.pop(index)
+    storage._write_events(events)
+    click.echo("Event has been removed.")
+
 if __name__ == '__main__':
     cli() 
