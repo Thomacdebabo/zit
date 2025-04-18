@@ -31,7 +31,7 @@ def print_intervals(events):
         end_event = events[i]
         print_interval(start_event, end_event)
 
-def print_events_and_subtasks(events, sub_events):
+def print_events_and_subtasks(events, sub_events, project_times):
     pretty_print_title("Events and Subtasks:")
     
     # Combine and sort all events chronologically
@@ -42,7 +42,8 @@ def print_events_and_subtasks(events, sub_events):
         max_project_length = max(max_project_length, len(event.project))
     for sub_event in sub_events:
         all_events.append((sub_event.timestamp, sub_event, "sub"))
-    all_events.sort(key=lambda x: x[0])  # Sort by timestamp
+    # Sort by timestamp first, then by event type (main before sub)
+    all_events.sort(key=lambda x: (x[0], 0 if x[2] == "main" else 1))
     
     pad_length = max(max_project_length + 10, 30)
     # Print events in chronological order
@@ -63,6 +64,17 @@ def print_events_and_subtasks(events, sub_events):
             print_string = print_string.ljust(pad_length, " ")
 
         print_string += f" {time_2_str(timestamp)}"
+        if event_type == "main":
+            time_seconds = project_times[event.project]
+            print_string += " | " +total_seconds_2_hms(time_seconds)
+        else:
+            if i + 1 < len(all_events):
+                interval = calculate_interval(event, all_events[i+1][1]).total_seconds()
+            else:
+                interval = calculate_ongoing_interval(event)
+
+            print_string += " | " + total_seconds_2_hms(interval)
+
         click.echo(print_string)
         
 def print_events_with_index(events):

@@ -49,12 +49,14 @@ class Storage:
 
 
         return self._sort_events(events)
+
     def _clean_file(self):
         """Clean the daily file"""
         events = self._read_events()
         events = self._sort_events(events)
         events = self._combine_events(events)
         self._write_events(events)
+
     def _combine_events(self, events):
         """Combine events with the same project name following the same logic as the CLI"""
         combined_events = []
@@ -78,6 +80,11 @@ class Storage:
 
     def add_event(self, event: Event):
         """Append a single event to the daily file"""
+        events = self._read_events()
+        for existing_event in events:
+            if existing_event.timestamp == event.timestamp:
+                print(f"Event already exists at {event.timestamp}")
+                return
         with open(self.data_file, 'a') as f:
             writer = csv.writer(f)
             writer.writerow(event_2_row(event))

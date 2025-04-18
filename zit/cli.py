@@ -130,9 +130,13 @@ def verify():
         click.echo("✗ final STOP event not found")
 
 @cli.command()
-def remove():
+@click.option('--subtask', '--sub', '-s', is_flag=True, help='Remove a subtask instead of a main project')
+def remove(subtask):
     """Remove the last event"""
-    storage = Storage()
+    if subtask:
+        storage = SubtaskStorage()
+    else:
+        storage = Storage()
     events = storage.get_events()
     if len(events) == 0:
         click.echo("No events found. Operation aborted.")
@@ -147,11 +151,15 @@ def remove():
     click.echo("Event has been removed.")
 
 @cli.command()
-def change():
+@click.option('--subtask', '--sub', '-s', is_flag=True, help='Change a subtask instead of a main project')
+def change(subtask):
     """Change an event"""
-    storage = Storage()
-    events = storage.get_events()
+    if subtask:
+        storage = SubtaskStorage()
+    else:
+        storage = Storage()
 
+    events = storage.get_events()
     if len(events) == 0:
         click.echo("No events found. Operation aborted.")
         return
@@ -184,6 +192,25 @@ def sub(subtask):
     click.echo(f"Added subtask: {subtask}")
 
 @cli.command()
+@click.argument('subtask')
+def attach(subtask):
+    """Attach a subtask to a main project"""
+    storage = Storage()
+    sub_storage = SubtaskStorage()
+    events = storage.get_events()
+    if len(events) == 0:
+        click.echo("No events found. Operation aborted.")
+        return
+    print_events_with_index(events)
+    index = click.prompt("Enter the index of the event to attach", type=int)
+    if index < 0 or index >= len(events):
+        click.echo("Invalid index. Operation aborted.")
+        return
+    event = events[index]
+    sub_storage.add_event(Event(timestamp=event.timestamp, project=subtask))
+    click.echo(f"Subtask {subtask} attached to {event.project}")
+    
+@cli.command()
 def current():
     """Show the current task"""
     storage = Storage()
@@ -201,8 +228,9 @@ def list():
 
     events = storage.get_events()
     sub_events = sub_storage.get_events()
-
-    print_events_and_subtasks(events, sub_events)
+    project_times, sum, excluded = calculate_project_times(events, exclude_projects=storage.exclude_projects)
+    print_events_and_subtasks(events, sub_events, project_times)
+    print_total_time(sum, excluded)
 
 if __name__ == '__main__':
     cli() 
