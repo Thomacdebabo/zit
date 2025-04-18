@@ -17,3 +17,11 @@ def verify_stop(events):
     if not events:
         return False
     return events[-1].project == "STOP"
+
+def verify_no_default_project(events):
+    """Verify that no default project is used"""
+    for event in events:
+        if event.project == "DEFAULT":
+            return False
+    return True
+

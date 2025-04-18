@@ -5,9 +5,9 @@ from .storage import Storage, SubtaskStorage
 from datetime import datetime
 from .storage import Event
 
-from .calculate import calculate_project_times
-from .print import pretty_print_title, print_intervals, print_project_times, print_ongoing_interval, print_total_time, print_events_with_index, print_events_and_subtasks
-from .verify import verify_lunch, verify_stop
+from .calculate import *
+from .print import *
+from .verify import *
 
 @click.group()
 def cli():
@@ -15,7 +15,7 @@ def cli():
     pass
 
 @cli.command()
-@click.argument('project', default='default')
+@click.argument('project', default='DEFAULT')
 def start(project):
     """Start tracking time for a project"""
     try:
@@ -128,6 +128,10 @@ def verify():
         click.echo("✓ final STOP event found")
     else:
         click.echo("✗ final STOP event not found")
+    if verify_no_default_project(events):
+        click.echo("✓ no DEFAULT times found")
+    else:
+        click.echo("✗ DEFAULT times found, please assign them to a project")
 
 @cli.command()
 @click.option('--subtask', '--sub', '-s', is_flag=True, help='Remove a subtask instead of a main project')
