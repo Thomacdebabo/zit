@@ -11,6 +11,7 @@ setup(
     entry_points={
         'console_scripts': [
             'zit=zit.cli:cli',
+            'zit-fm=zit.filemanager_cli:fm',
         ],
     },
 ) 
