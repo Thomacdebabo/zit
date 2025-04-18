@@ -132,6 +132,13 @@ def verify():
         click.echo("✓ no DEFAULT times found")
     else:
         click.echo("✗ DEFAULT times found, please assign them to a project")
+        
+    sub_storage = SubtaskStorage()
+    sub_events = sub_storage.get_events()  
+    if verify_no_default_project(sub_events):
+        click.echo("✓ no DEFAULT subtasks found")
+    else:
+        click.echo("✗ DEFAULT subtasks found, please assign them to a project")
 
 @cli.command()
 @click.option('--subtask', '--sub', '-s', is_flag=True, help='Remove a subtask instead of a main project')
@@ -182,7 +189,7 @@ def change(subtask):
     click.echo("Event has been changed.")
 
 @cli.command()
-@click.argument('subtask')
+@click.argument('subtask', default="DEFAULT")
 def sub(subtask):
     """Add a subtask"""
     sub_storage = SubtaskStorage()
