@@ -6,16 +6,27 @@ from typing import Optional
 import os
 import time
 
-class Event(BaseModel):
+class Project(BaseModel):
     timestamp: datetime
-    project: str
-    subtask: Optional[str] = None
+    name: str
 
-def event_2_row(event):
-    return [event.timestamp, event.project]
+class Subtask(Project):
+    note: str
 
-def row_2_event(row):
-    return Event(timestamp=row[0], project=row[1])
+def project_2_row(project):
+    return [project.timestamp, project.name]
+
+def subtask_2_row(subtask):
+    return [subtask.timestamp, subtask.name, subtask.note]
+
+def row_2_project(row):
+    return Project(timestamp=row[0], name=row[1])
+
+def row_2_subtask(row):
+    if len(row) == 3:   
+        return Subtask(timestamp=row[0], name=row[1], note=row[2])
+    else:
+        return Subtask(timestamp=row[0], name=row[1], note="")
 
 def load_date(date):
     return datetime.fromisoformat(date)
@@ -34,21 +45,21 @@ class Storage:
         self.data_dir.mkdir(exist_ok=True)
         self.trash_dir.mkdir(exist_ok=True)
 
-    def _read_events(self):
+    def _read_events(self) -> list[Project]:
         """Read all events from the daily file"""
         if not self.data_file.exists():
             return []
 
-        events = []
+        projects = []
         with open(self.data_file, 'r') as f:
             reader = csv.reader(f)
             for row in reader:
                 row[0] = load_date(row[0])
-                event = row_2_event(row)
-                events.append(event)
+                project = row_2_project(row)
+                projects.append(project)
 
 
-        return self._sort_events(events)
+        return self._sort_events(projects)
 
     def _clean_file(self):
         """Clean the daily file"""
@@ -57,28 +68,28 @@ class Storage:
         events = self._combine_events(events)
         self._write_events(events)
 
-    def _combine_events(self, events):
+    def _combine_events(self, events: list[Project | Subtask]) -> list[Project | Subtask]:
         """Combine events with the same project name following the same logic as the CLI"""
         combined_events = []
         for event in events:
             if combined_events:
-                if combined_events[-1].project == event.project:
+                if combined_events[-1].name == event.name:
                     continue
             combined_events.append(event)
         return combined_events
 
-    def _write_events(self, events):
+    def _write_events(self, events: list[Project]):
         """Write events to the daily file"""
         with open(self.data_file, 'w') as f:
             writer = csv.writer(f)
             for event in events:
-                writer.writerow(event_2_row(event))
+                writer.writerow(project_2_row(event))
 
-    def get_events(self):
+    def get_events(self) -> list[Project | Subtask]:
         events = self._read_events()
         return self._sort_events(events)
 
-    def add_event(self, event: Event):
+    def add_event(self, event: Project):
         """Append a single event to the daily file"""
         events = self._read_events()
         for existing_event in events:
@@ -87,9 +98,9 @@ class Storage:
                 return
         with open(self.data_file, 'a') as f:
             writer = csv.writer(f)
-            writer.writerow(event_2_row(event))
+            writer.writerow(project_2_row(event))
 
-    def _sort_events(self, events):
+    def _sort_events(self, events: list[Project | Subtask]) -> list[Project | Subtask]:
         events.sort(key=lambda event: event.timestamp)
         return events
 
@@ -106,14 +117,15 @@ class Storage:
         if self.data_file.exists():
             os.rename(self.data_file, trash_file)
 
-    def get_current_task(self):
+    def get_current_task(self) -> Optional[str]:
         events = self.get_events()
         if len(events) == 0:
             return None
-        if events[-1].project in self.exclude_projects:
+        if events[-1].name in self.exclude_projects:
             return None
-        return events[-1].project
-    def get_project_at_time(self, timestamp):
+        return events[-1].name
+        
+    def get_project_at_time(self, timestamp: datetime) -> Optional[Project]:
         events = self.get_events()
         project = None
         for event in events:
@@ -131,4 +143,35 @@ class SubtaskStorage(Storage):
         self._ensure_data_dir()
         self.current_date = datetime.now().strftime('%Y-%m-%d')
         self.data_file = self.data_dir / f'{self.current_date}_subtasks.csv'
+
+    def _read_events(self) -> list[Subtask]:
+        """Read all events from the daily file"""
+        if not self.data_file.exists():
+            return []
+
+        subtasks = []
+        with open(self.data_file, 'r') as f:
+            reader = csv.reader(f)
+            for row in reader:
+                subtask = row_2_subtask(row)
+                subtasks.append(subtask)
+        return subtasks
+
+    def _write_events(self, events: list[Subtask]):
+        """Write events to the daily file"""
+        with open(self.data_file, 'w') as f:
+            writer = csv.writer(f)
+            for event in events:
+                writer.writerow(subtask_2_row(event))
         
+    def add_event(self, event: Subtask):
+        """Append a single event to the daily file"""
+        events = self._read_events()
+        for existing_event in events:
+            if existing_event.timestamp == event.timestamp:
+                print(f"Event already exists at {event.timestamp}")
+                return
+        with open(self.data_file, 'a') as f:
+            writer = csv.writer(f)
+            writer.writerow(subtask_2_row(event))
+   

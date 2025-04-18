@@ -161,7 +161,7 @@ def status(start_date, end_date):
         
         # Assign duration to the project of the start_event
         # Consider excluding specific projects like 'STOP' or 'LUNCH' if needed
-        project_name = start_event.project
+        project_name = start_event.name
         if project_name.upper() != "STOP": # Simple exclusion of STOP
             project_times[project_name] += duration
             total_duration_seconds += duration

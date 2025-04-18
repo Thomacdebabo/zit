@@ -3,7 +3,7 @@
 import click
 from .storage import Storage, SubtaskStorage
 from datetime import datetime
-from .storage import Event
+from .storage import Project, Subtask
 
 from .calculate import *
 from .print import *
@@ -20,7 +20,7 @@ def start(project):
     """Start tracking time for a project"""
     try:
         storage = Storage()
-        storage.add_event(Event(timestamp=datetime.now(), project=project))
+        storage.add_event(Project(timestamp=datetime.now(), name=project))
         click.echo(f"Started tracking time for project: {project}")
     except ValueError as e:
         click.echo(f"Error: {str(e)}", err=True)
@@ -30,7 +30,7 @@ def stop():
     """Stop tracking time"""
     click.echo("Stopping time tracking...")
     storage = Storage()
-    storage.add_event(Event(timestamp=datetime.now(), project="STOP"))
+    storage.add_event(Project(timestamp=datetime.now(), name="STOP"))
 
 @cli.command()
 @click.option('--yesterday', is_flag=True, help='Show status for yesterday')
@@ -87,11 +87,11 @@ def add(project, time, subtask):
                 click.echo("No current task. No subtask added.")
                 return
             sub_storage = SubtaskStorage()
-            sub_storage.add_event(Event(timestamp=event_time, project=project))
+            sub_storage.add_event(Subtask(timestamp=event_time, name=project))
             click.echo(f"Added subtask: {project} at {event_time.strftime('%H:%M')}")
         else:
             
-            storage.add_event(Event(timestamp=event_time, project=project))
+            storage.add_event(Project(timestamp=event_time, name=project))
             click.echo(f"Added project: {project} at {event_time.strftime('%H:%M')}")
     except ValueError as e:
         click.echo(f"Error: {str(e)}", err=True)
@@ -132,7 +132,7 @@ def verify():
         click.echo("✓ no DEFAULT times found")
     else:
         click.echo("✗ DEFAULT times found, please assign them to a project")
-        
+
     sub_storage = SubtaskStorage()
     sub_events = sub_storage.get_events()  
     if verify_no_default_project(sub_events):
@@ -183,14 +183,15 @@ def change(subtask):
         return
 
     event = events[index]
-    project = click.prompt("Enter the new project", type=str)
-    event.project = project
+    name = click.prompt("Enter the new name", type=str)
+    event.name = name
     storage._write_events(events)
     click.echo("Event has been changed.")
 
 @cli.command()
 @click.argument('subtask', default="DEFAULT")
-def sub(subtask):
+@click.option('--note', '-n', default="", help='Add a note to the subtask')
+def sub(subtask, note):
     """Add a subtask"""
     sub_storage = SubtaskStorage()
     storage = Storage()
@@ -199,7 +200,7 @@ def sub(subtask):
         click.echo("No current task. Operation aborted.")
         return
     
-    sub_storage.add_event(Event(timestamp=datetime.now(), project=subtask))
+    sub_storage.add_event(Subtask(timestamp=datetime.now(), name=subtask, note=note))
     click.echo(f"Added subtask: {subtask}")
 
 @cli.command()
@@ -218,7 +219,7 @@ def attach(subtask):
         click.echo("Invalid index. Operation aborted.")
         return
     event = events[index]
-    sub_storage.add_event(Event(timestamp=event.timestamp, project=subtask))
+    sub_storage.add_event(Subtask(timestamp=event.timestamp, name=subtask))
     click.echo(f"Subtask {subtask} attached to {event.project}")
     
 @cli.command()

@@ -1,7 +1,7 @@
 from pathlib import Path
 from datetime import datetime, timedelta
 import csv
-from zit.storage import Event, load_date, row_2_event
+from zit.storage import Project, load_date, row_2_event
 
 class ZitFileManager:
     def __init__(self):
@@ -33,7 +33,7 @@ class ZitFileManager:
             current_date += timedelta(days=1)
         return files
 
-    def read_file(self, file_path: Path) -> list[Event]:
+    def read_file(self, file_path: Path) -> list[Project]:
         """Read events from a specific file"""
         events = []
         with open(file_path, 'r') as f:
@@ -44,7 +44,7 @@ class ZitFileManager:
                 events.append(event)
         return events
 
-    def get_all_events(self, start_date: datetime, end_date: datetime) -> list[Event]:
+    def get_all_events(self, start_date: datetime, end_date: datetime) -> list[Project]:
         """Get all events from all files within a date range"""
         files = self.get_files_in_date_range(start_date, end_date)
         all_events = []
@@ -53,10 +53,10 @@ class ZitFileManager:
             all_events.extend(events)
         return sorted(all_events, key=lambda event: event.timestamp)
 
-    def get_project_events(self, project_name: str, start_date: datetime, end_date: datetime) -> list[Event]:
+    def get_project_events(self, project_name: str, start_date: datetime, end_date: datetime) -> list[Project]:
         """Get all events for a specific project within a date range"""
         all_events = self.get_all_events(start_date, end_date)
-        return [event for event in all_events if event.project == project_name]
+        return [event for event in all_events if event.name == project_name]
 
     def get_total_time_for_project(self, project_name: str, start_date: datetime, end_date: datetime) -> timedelta:
         """Calculate total time spent on a project within a date range"""

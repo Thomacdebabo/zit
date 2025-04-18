@@ -19,16 +19,16 @@ def calculate_project_times(events, exclude_projects=[], add_ongoing=True):
         end_event = events[i]
         interval = calculate_interval(start_event, end_event)
 
-        project = start_event.project
+        project = start_event.name
         project_times[project] = project_times.get(project, 0) + interval.total_seconds()
         if project not in exclude_projects:
             sum += interval.total_seconds()
         else:
             excluded += interval.total_seconds()
 
-    if add_ongoing and events[-1].project != "STOP":
+    if add_ongoing and events[-1].name != "STOP":
         ongoing_interval = calculate_ongoing_interval(events[-1])
-        project = events[-1].project
+        project = events[-1].name
         project_times[project] = project_times.get(project, 0) + ongoing_interval
         if project not in exclude_projects:
             sum += ongoing_interval
