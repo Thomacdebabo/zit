@@ -221,7 +221,7 @@ def attach(subtask):
         return
     event = events[index]
     sub_storage.add_event(Subtask(timestamp=event.timestamp, name=subtask))
-    click.echo(f"Subtask {subtask} attached to {event.project}")
+    click.echo(f"Subtask {subtask} attached to {event.name}")
     
 @cli.command()
 def current():
