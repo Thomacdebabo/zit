@@ -17,10 +17,10 @@ def total_seconds_2_hms(total_seconds):
     return f'{int(hours)}:{int(minutes)}:{int(seconds)}'
 
 def pretty_print_title(title):
-    click.echo("--------------------------------")
-    click.echo(title)
-    click.echo("--------------------------------")
-
+    width = max(len(title) + 10, 50)
+    click.echo("┌" + "─" * (width-2) + "┐")
+    click.echo(f"│ {title}".ljust(width-1, " ") + "│")
+    click.echo("└" + "─" * (width-2) + "┘")
 def print_interval(event1, event2):
     interval = calculate_interval(event1, event2)
     click.echo(f"{event1.project} - {interval_2_hms(interval)} ( {time_2_str(event1.timestamp)} -> {time_2_str(event2.timestamp)})")
