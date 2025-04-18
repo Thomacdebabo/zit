@@ -81,13 +81,16 @@ def add(project, time, subtask):
         # Create a datetime object for today with the specified time
         now = datetime.now()
         event_time = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
-
+        storage = Storage()
         if subtask:
+            if storage.get_project_at_time(event_time) is None:
+                click.echo("No current task. No subtask added.")
+                return
             sub_storage = SubtaskStorage()
             sub_storage.add_event(Event(timestamp=event_time, project=project))
             click.echo(f"Added subtask: {project} at {event_time.strftime('%H:%M')}")
         else:
-            storage = Storage()
+            
             storage.add_event(Event(timestamp=event_time, project=project))
             click.echo(f"Added project: {project} at {event_time.strftime('%H:%M')}")
     except ValueError as e:
@@ -108,6 +111,8 @@ def clean():
     """Clean the data"""
     storage = Storage()
     storage.clean_storage()
+    sub_storage = SubtaskStorage()
+    sub_storage.clean_storage()
     click.echo("Data has been cleaned.")
 
 @cli.command()
