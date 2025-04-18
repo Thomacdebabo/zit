@@ -61,8 +61,10 @@ def status(yesterday):
 @cli.command()
 @click.argument('project')
 @click.argument('time', metavar='TIME (format: HHMM)')
-def add(project, time):
-    """Add a project with a specific time (format: HHMM, e.g. 1200 for noon)"""
+@click.option('--subtask', '--sub', '-s', is_flag=True, help='Add a subtask')
+def add(project, time, subtask):
+    """Add a project with a specific time (format: HHMM, e.g. 1200 for noon)
+    Use --subtask (or --sub, -s) flag to add a subtask instead of a main project"""
     try:
         # Parse the time format (HHMM)
         if len(time) != 4 or not time.isdigit():
@@ -80,9 +82,14 @@ def add(project, time):
         now = datetime.now()
         event_time = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
 
-        storage = Storage()
-        storage.add_event(Event(timestamp=event_time, project=project))
-        click.echo(f"Added project: {project} at {event_time.strftime('%H:%M')}")
+        if subtask:
+            sub_storage = SubtaskStorage()
+            sub_storage.add_event(Event(timestamp=event_time, project=project))
+            click.echo(f"Added subtask: {project} at {event_time.strftime('%H:%M')}")
+        else:
+            storage = Storage()
+            storage.add_event(Event(timestamp=event_time, project=project))
+            click.echo(f"Added project: {project} at {event_time.strftime('%H:%M')}")
     except ValueError as e:
         click.echo(f"Error: {str(e)}", err=True)
 
@@ -91,6 +98,9 @@ def clear():
     """Clear all data"""
     storage = Storage()
     storage.remove_data_file()
+
+    sub_storage = SubtaskStorage()
+    sub_storage.remove_data_file()
     click.echo("All data has been cleared.")
 
 @cli.command()
@@ -183,7 +193,7 @@ def list():
     """List all subtasks"""
     sub_storage = SubtaskStorage()
     storage = Storage()
-    
+
     events = storage.get_events()
     sub_events = sub_storage.get_events()
 
