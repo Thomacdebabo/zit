@@ -64,6 +64,7 @@ def print_events_and_subtasks(events, sub_events):
 
         print_string += f" {time_2_str(timestamp)}"
         click.echo(print_string)
+        
 def print_events_with_index(events):
     for i, event in enumerate(events):
         click.echo(f"{i}: {event.project} - {time_2_str(event.timestamp)}")
