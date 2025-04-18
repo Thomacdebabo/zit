@@ -10,6 +10,7 @@ def time_2_str(time):
 def interval_2_hms(interval):
     return total_seconds_2_hms(interval.total_seconds())
 
+
 def total_seconds_2_hms(total_seconds):
     hours, remainder = divmod(total_seconds, 3600)
     minutes, seconds = divmod(remainder, 60)
@@ -30,6 +31,39 @@ def print_intervals(events):
         end_event = events[i]
         print_interval(start_event, end_event)
 
+def print_events_and_subtasks(events, sub_events):
+    pretty_print_title("Events and Subtasks:")
+    
+    # Combine and sort all events chronologically
+    all_events = []
+    max_project_length = 0
+    for event in events:
+        all_events.append((event.timestamp, event, "main"))
+        max_project_length = max(max_project_length, len(event.project))
+    for sub_event in sub_events:
+        all_events.append((sub_event.timestamp, sub_event, "sub"))
+    all_events.sort(key=lambda x: x[0])  # Sort by timestamp
+    
+    pad_length = max(max_project_length + 10, 30)
+    # Print events in chronological order
+    for i, (timestamp, event, event_type) in enumerate(all_events):
+        print_string = ""
+        if event_type == "main":
+            if event.project in ["STOP"]:
+                print_string += "  └─"
+            else:
+                print_string += event.project + " "
+            print_string = print_string.ljust(pad_length, "─")
+        else:
+            if i + 1 < len(all_events) and (all_events[i+1][2] == "sub" or all_events[i+1][1].project == "STOP"):
+                print_string += f"  ├─ "
+            else:
+                print_string += f"  └─ "
+            print_string += event.project
+            print_string = print_string.ljust(pad_length, " ")
+
+        print_string += f" {time_2_str(timestamp)}"
+        click.echo(print_string)
 def print_events_with_index(events):
     for i, event in enumerate(events):
         click.echo(f"{i}: {event.project} - {time_2_str(event.timestamp)}")

@@ -98,3 +98,21 @@ class Storage:
         trash_file = self.trash_dir / f"{self.data_file.stem}_trash_{datetime.now().strftime('%H_%M_%S')}.csv"
         if self.data_file.exists():
             os.rename(self.data_file, trash_file)
+            
+    def get_current_task(self):
+        events = self.get_events()
+        if len(events) == 0:
+            return None
+        if events[-1].project in self.exclude_projects:
+            return None
+        return events[-1].project
+
+class SubtaskStorage(Storage):
+    def __init__(self):
+        super().__init__()
+        self.data_dir = Path.home() / '.zit'
+        self.trash_dir = Path.home() / '.zit/trash'
+        self._ensure_data_dir()
+        self.current_date = datetime.now().strftime('%Y-%m-%d')
+        self.data_file = self.data_dir / f'{self.current_date}_subtasks.csv'
+        

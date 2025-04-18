@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 
 import click
-from .storage import Storage
+from .storage import Storage, SubtaskStorage
 from datetime import datetime
 from .storage import Event
 
 from .calculate import calculate_project_times
-from .print import pretty_print_title, print_intervals, print_project_times, print_ongoing_interval, print_total_time, print_events_with_index
+from .print import pretty_print_title, print_intervals, print_project_times, print_ongoing_interval, print_total_time, print_events_with_index, print_events_and_subtasks
 from .verify import verify_lunch, verify_stop
 
 @click.group()
@@ -113,6 +113,7 @@ def verify():
         click.echo("✓ final STOP event found")
     else:
         click.echo("✗ final STOP event not found")
+
 @cli.command()
 def remove():
     """Remove the last event"""
@@ -129,6 +130,64 @@ def remove():
     events.pop(index)
     storage._write_events(events)
     click.echo("Event has been removed.")
+
+@cli.command()
+def change():
+    """Change an event"""
+    storage = Storage()
+    events = storage.get_events()
+
+    if len(events) == 0:
+        click.echo("No events found. Operation aborted.")
+        return
+
+    print_events_with_index(events)
+    index = click.prompt("Enter the index of the event to change", type=int)
+
+    if index < 0 or index >= len(events):
+        click.echo("Invalid index. Operation aborted.")
+        return
+
+    event = events[index]
+    project = click.prompt("Enter the new project", type=str)
+    event.project = project
+    storage._write_events(events)
+    click.echo("Event has been changed.")
+
+@cli.command()
+@click.argument('subtask')
+def sub(subtask):
+    """Add a subtask"""
+    sub_storage = SubtaskStorage()
+    storage = Storage()
+    current_task = storage.get_current_task()
+    if current_task is None:
+        click.echo("No current task. Operation aborted.")
+        return
+    
+    sub_storage.add_event(Event(timestamp=datetime.now(), project=subtask))
+    click.echo(f"Added subtask: {subtask}")
+
+@cli.command()
+def current():
+    """Show the current task"""
+    storage = Storage()
+    current_task = storage.get_current_task()
+    if current_task is None:
+        click.echo("No current task.")
+        return
+    click.echo(f"Current task: {current_task}")
+
+@cli.command()
+def list():
+    """List all subtasks"""
+    sub_storage = SubtaskStorage()
+    storage = Storage()
+    
+    events = storage.get_events()
+    sub_events = sub_storage.get_events()
+
+    print_events_and_subtasks(events, sub_events)
 
 if __name__ == '__main__':
     cli() 
