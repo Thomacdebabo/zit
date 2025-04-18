@@ -1,7 +1,7 @@
 from pathlib import Path
 from datetime import datetime, timedelta
 import csv
-from zit.storage import Project, load_date, row_2_event
+from zit.storage import *
 
 class ZitFileManager:
     def __init__(self):
@@ -33,23 +33,38 @@ class ZitFileManager:
             current_date += timedelta(days=1)
         return files
 
-    def read_file(self, file_path: Path) -> list[Project]:
+    def read_project_file(self, file_path: Path) -> list[Project]:
         """Read events from a specific file"""
         events = []
         with open(file_path, 'r') as f:
             reader = csv.reader(f)
             for row in reader:
                 row[0] = load_date(row[0])
-                event = row_2_event(row)
+                event = row_2_project(row)
                 events.append(event)
         return events
+    
+    def read_subtask_file(self, file_path: Path) -> list[Subtask]:
+        """Read events from a specific file"""
+        events = []
+        with open(file_path, 'r') as f:
+            reader = csv.reader(f)
+            for row in reader:  
+                row[0] = load_date(row[0])
+                event = row_2_subtask(row)
+                events.append(event)
+        return events
+    
 
-    def get_all_events(self, start_date: datetime, end_date: datetime) -> list[Project]:
+    def get_all_events(self, start_date: datetime, end_date: datetime) -> list[Project | Subtask]:
         """Get all events from all files within a date range"""
         files = self.get_files_in_date_range(start_date, end_date)
         all_events = []
-        for file in files:
-            events = self.read_file(file)
+        for file in files:  
+            if file.name.endswith('subtasks.csv'):
+                events = self.read_subtask_file(file)
+            else:
+                events = self.read_project_file(file)
             all_events.extend(events)
         return sorted(all_events, key=lambda event: event.timestamp)
 

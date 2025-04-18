@@ -3,6 +3,8 @@ from .calculate import calculate_interval, calculate_ongoing_interval
 
 from enum import Enum, auto
 
+DEFAULT_MAX_WIDTH = 70
+
 class VerbosityLevel(Enum):
     NO_NOTES = auto()
     SINGLE_LINE_NOTES = auto()
@@ -37,7 +39,7 @@ def split_line(text: str, max_length: int) -> list[str]:
     return lines
 
 def pretty_print_title(title):
-    width = max(len(title) + 10, 50)
+    width = max(len(title) + 10, DEFAULT_MAX_WIDTH)
     click.echo("┌" + "─" * (width-2) + "┐")
     click.echo(f"│ {title}".ljust(width-1, " ") + "│")
     click.echo("└" + "─" * (width-2) + "┘")
@@ -65,7 +67,7 @@ def print_events_and_subtasks(events, sub_events, project_times, verbosity: Verb
     # Sort by timestamp first, then by event type (main before sub)
     all_events.sort(key=lambda x: (x[0], 0 if x[2] == "main" else 1))
     
-    pad_length = max(max_project_length + 10, 30)
+    pad_length = max(max_project_length + 10, DEFAULT_MAX_WIDTH-20)
     # Print events in chronological order
     for i, (timestamp, event, event_type) in enumerate(all_events):
         print_string = ""
@@ -124,7 +126,9 @@ def print_events_with_index(events):
 def print_project_times(project_times):
     pretty_print_title("Time per project:")
     for project, total_time in sorted(project_times.items(), key=lambda item: item[1], reverse=True):
-        click.echo(f"{project} - {total_seconds_2_hms(total_time)}")
+        string = f"{project}".ljust(DEFAULT_MAX_WIDTH-8) + f"{total_seconds_2_hms(total_time)}"
+
+        click.echo(string)
 
 def print_ongoing_interval(event):
     if event.name != "STOP":
@@ -134,5 +138,5 @@ def print_ongoing_interval(event):
 
 def print_total_time(sum, excluded):
     pretty_print_title("Total time:")
-    click.echo(f"Total: {total_seconds_2_hms(sum)}")
-    click.echo(f"Excluded: {total_seconds_2_hms(excluded)}")
+    click.echo(f"Total:".ljust(DEFAULT_MAX_WIDTH-8) + f"{total_seconds_2_hms(sum)}")
+    click.echo(f"Excluded:".ljust(DEFAULT_MAX_WIDTH-8) + f"{total_seconds_2_hms(excluded)}")
