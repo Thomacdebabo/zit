@@ -65,8 +65,9 @@ def print_events_and_subtasks(events, sub_events, project_times):
 
         print_string += f" {time_2_str(timestamp)}"
         if event_type == "main":
-            time_seconds = project_times[event.project]
-            print_string += " | " +total_seconds_2_hms(time_seconds)
+            if event.project in project_times and event.project != "STOP":  
+                time_seconds = project_times[event.project]
+                print_string += " | " +total_seconds_2_hms(time_seconds)
         else:
             if i + 1 < len(all_events):
                 interval = calculate_interval(event, all_events[i+1][1]).total_seconds()
