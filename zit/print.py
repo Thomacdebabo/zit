@@ -5,7 +5,7 @@ def date_2_str(date):
     return date.strftime('%Y-%m-%d')
 
 def time_2_str(time):
-    return time.strftime('%H:%M:%S')
+    return f"{time.hour:02d}:{time.minute:02d}:{time.second:02d}"
 
 def interval_2_hms(interval):
     return total_seconds_2_hms(interval.total_seconds())
@@ -14,7 +14,7 @@ def interval_2_hms(interval):
 def total_seconds_2_hms(total_seconds):
     hours, remainder = divmod(total_seconds, 3600)
     minutes, seconds = divmod(remainder, 60)
-    return f'{int(hours)}:{int(minutes)}:{int(seconds)}'
+    return f'{int(hours):02d}:{int(minutes):02d}:{int(seconds):02d}'
 
 def pretty_print_title(title):
     width = max(len(title) + 10, 50)
@@ -74,6 +74,8 @@ def print_events_and_subtasks(events, sub_events, project_times):
             if event.name in project_times and event.name != "STOP":  
                 time_seconds = project_times[event.name]
                 print_string += " | " +total_seconds_2_hms(time_seconds)
+            else:
+                print_string +=  " ──────────"
         else:
             if i + 1 < len(all_events):
                 interval = calculate_interval(event, all_events[i+1][1]).total_seconds()
