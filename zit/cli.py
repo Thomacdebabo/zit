@@ -62,7 +62,8 @@ def status(yesterday):
 @click.argument('project')
 @click.argument('time', metavar='TIME (format: HHMM)')
 @click.option('--subtask', '--sub', '-s', is_flag=True, help='Add a subtask')
-def add(project, time, subtask):
+@click.option('--note', '-n', default="", help='Add a note to the project')
+def add(project, time, subtask, note):
     """Add a project with a specific time (format: HHMM, e.g. 1200 for noon)
     Use --subtask (or --sub, -s) flag to add a subtask instead of a main project"""
     try:
@@ -87,7 +88,7 @@ def add(project, time, subtask):
                 click.echo("No current task. No subtask added.")
                 return
             sub_storage = SubtaskStorage()
-            sub_storage.add_event(Subtask(timestamp=event_time, name=project))
+            sub_storage.add_event(Subtask(timestamp=event_time, name=project, note=note))
             click.echo(f"Added subtask: {project} at {event_time.strftime('%H:%M')}")
         else:
             
@@ -233,7 +234,8 @@ def current():
     click.echo(f"Current task: {current_task}")
 
 @cli.command()
-def list():
+@click.option('-v', '--verbosity', count=True, default=2, help='Increase verbosity level (-v: none, -vv: single line, -vvv: full notes)')
+def list(verbosity):
     """List all subtasks"""
     sub_storage = SubtaskStorage()
     storage = Storage()
@@ -241,8 +243,41 @@ def list():
     events = storage.get_events()
     sub_events = sub_storage.get_events()
     project_times, sum, excluded = calculate_project_times(events, exclude_projects=storage.exclude_projects)
-    print_events_and_subtasks(events, sub_events, project_times)
+    print_events_and_subtasks(events, sub_events, project_times, VerbosityLevel(verbosity))
     print_total_time(sum, excluded)
 
+@cli.command()
+@click.argument('note')
+@click.option('--pick', '-p', is_flag=True, help='Pick a subtask to add a note to')
+def note(note, pick):
+    """Add a note to the current task"""
+    sub_storage = SubtaskStorage()
+    events = sub_storage.get_events()
+    if len(events) == 0:
+        click.echo("No current task. Operation aborted.")
+        return
+    if pick:
+        print_events_with_index(events)
+        index = click.prompt("Enter the index of the event to add a note to", type=int)
+        if index < 0 or index >= len(events):
+            click.echo("Invalid index. Operation aborted.")
+            return
+        event = events[index]
+    else:
+        event = events[-1]
+
+    if event.note:
+        click.echo(f"Subtask: {event.name}")
+        click.echo(f"Current note: {event.note}")
+        if click.confirm("Do you want to overwrite the note?"):
+            event.note = note   
+            sub_storage._write_events(events)
+            click.echo(f"Added note to {event.name}: {note}")
+        else:
+            click.echo("Note not overwritten.")
+    else:
+        event.note = note
+        sub_storage._write_events(events)
+        click.echo(f"Added note to {event.name}: {note}")
 if __name__ == '__main__':
     cli() 
