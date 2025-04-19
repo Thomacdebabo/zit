@@ -206,7 +206,8 @@ def sub(subtask, note):
 
 @cli.command()
 @click.argument('subtask')
-def attach(subtask):
+@click.option('--note', '-n', default="", help='Add a note to the subtask')
+def attach(subtask, note):
     """Attach a subtask to a main project"""
     storage = Storage()
     sub_storage = SubtaskStorage()
@@ -220,7 +221,7 @@ def attach(subtask):
         click.echo("Invalid index. Operation aborted.")
         return
     event = events[index]
-    sub_storage.add_event(Subtask(timestamp=event.timestamp, name=subtask))
+    sub_storage.add_event(Subtask(timestamp=event.timestamp, name=subtask, note=note))
     click.echo(f"Subtask {subtask} attached to {event.name}")
     
 @cli.command()
