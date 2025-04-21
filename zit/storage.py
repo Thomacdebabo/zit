@@ -5,6 +5,8 @@ from pydantic import BaseModel
 from typing import Optional
 import os
 import time
+DATA_DIR = Path.home() / '.zit'
+TRASH_DIR = Path.home() / '.zit/trash'
 
 class Project(BaseModel):
     timestamp: datetime
@@ -32,11 +34,11 @@ def load_date(date):
     return datetime.fromisoformat(date)
 
 class Storage:
-    def __init__(self):
-        self.data_dir = Path.home() / '.zit'
-        self.trash_dir = Path.home() / '.zit/trash'
+    def __init__(self, current_date=datetime.now().strftime('%Y-%m-%d')):
+        self.data_dir = DATA_DIR
+        self.trash_dir = TRASH_DIR
         self._ensure_data_dir()
-        self.current_date = datetime.now().strftime('%Y-%m-%d')
+        self.current_date = current_date
         self.data_file = self.data_dir / f'{self.current_date}.csv'
         self.exclude_projects = ['STOP', 'LUNCH']
 
@@ -136,12 +138,8 @@ class Storage:
         return project
 
 class SubtaskStorage(Storage):
-    def __init__(self):
-        super().__init__()
-        self.data_dir = Path.home() / '.zit'
-        self.trash_dir = Path.home() / '.zit/trash'
-        self._ensure_data_dir()
-        self.current_date = datetime.now().strftime('%Y-%m-%d')
+    def __init__(self, current_date=datetime.now().strftime('%Y-%m-%d')):
+        super().__init__(current_date)
         self.data_file = self.data_dir / f'{self.current_date}_subtasks.csv'
 
     def _read_events(self) -> list[Subtask]:

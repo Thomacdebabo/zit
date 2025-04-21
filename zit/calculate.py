@@ -9,6 +9,13 @@ def calculate_interval(event1, event2):
 def calculate_ongoing_interval(event):
     return max(0, (datetime.now() - event.timestamp).total_seconds())
 
+def add_project_times(project_time1, project_time2):
+    sum = {}
+    all_keys = set(project_time1.keys()) | set(project_time2.keys())
+    for key in all_keys:
+        sum[key] = project_time1.get(key, 0) + project_time2.get(key, 0)
+    return sum
+
 def calculate_project_times(events, exclude_projects=[], add_ongoing=True):
     sum = 0
     excluded = 0

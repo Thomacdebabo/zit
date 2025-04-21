@@ -8,7 +8,7 @@ from .storage import Project, Subtask
 from .calculate import *
 from .print import *
 from .verify import *
-
+from .filemanager import ZitFileManager
 @click.group()
 def cli():
     """Zit - Zimple Interval Tracker: A minimal time tracking CLI tool"""
@@ -236,10 +236,27 @@ def current():
 
 @cli.command()
 @click.option('-v', '--verbosity', count=True, default=2, help='Increase verbosity level (-v: none, -vv: single line, -vvv: full notes)')
-def list(verbosity):
+@click.option('-p', '--pick', is_flag=True, help='Pick a date')
+
+def list(verbosity, pick):
     """List all subtasks"""
-    sub_storage = SubtaskStorage()
-    storage = Storage()
+    if pick:
+        zfm = ZitFileManager()
+        files = sorted(zfm.get_all_dates())
+
+        for i, f in enumerate(files):
+            click.echo(f"[{i}] {f.stem}")  
+
+        date = click.prompt("Enter the index of the date to list", type=int)
+
+        if date < 0 or date >= len(files):
+            click.echo("Invalid index. Operation aborted.")
+            return
+        storage = Storage(files[date].stem)
+        sub_storage = SubtaskStorage(files[date].stem)
+    else:
+        sub_storage = SubtaskStorage()
+        storage = Storage()
 
     events = storage.get_events()
     sub_events = sub_storage.get_events()
