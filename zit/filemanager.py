@@ -14,9 +14,9 @@ class ZitFileManager:
         self.data_dir.mkdir(exist_ok=True)
         self.trash_dir.mkdir(exist_ok=True)
 
-    def get_all_files(self):
-        """Get all CSV files in the data directory"""
-        return list(self.data_dir.glob('*.csv'))
+    def get_all_dates(self):
+        """Get all files in the data directory, excluding subtask files"""
+        return [f for f in self.data_dir.glob('*.csv') if not f.name.endswith('_subtasks.csv')]
 
     def get_files_in_date_range(self, start_date: datetime, end_date: datetime):
         """Get all CSV files within a date range"""

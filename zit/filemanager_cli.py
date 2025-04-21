@@ -8,6 +8,15 @@ from .filemanager import ZitFileManager
 from .print import print_events_with_index, print_project_times, total_seconds_2_hms # Import the necessary print function
 import sys # Import sys for exit
 from collections import defaultdict # Import defaultdict for aggregating times
+from .storage import Storage, SubtaskStorage
+from .calculate import calculate_project_times
+def build_project_dict(events: list[Project | Subtask]):
+    project_dict = {}
+    for event in events:
+        if event.name not in project_dict:
+            project_dict[event.name] = []
+        project_dict[event.name].append(event)
+    return project_dict
 
 def parse_date(date_str: str) -> datetime | None:
     """Helper function to parse YYYY-MM-DD date strings."""
@@ -15,104 +24,78 @@ def parse_date(date_str: str) -> datetime | None:
         return datetime.strptime(date_str, '%Y-%m-%d')
     except ValueError:
         return None
+def print_files(files):
+    for i, file in enumerate(files) :
+        click.echo(f"[{i}] {file.stem}")
+        # Get the events for this file
+        storage = Storage()
+        storage.data_file = storage.data_dir / file
+        events = storage.get_events()
+
+        if events:
+            # Group events by project
+            project_times, sum, excluded = calculate_project_times(events)
+            
+            # Print project times for this day
+            if project_times:
+                for project, duration in sorted(project_times.items()):
+                    hms = total_seconds_2_hms(duration)
+                    is_last = project == sorted(project_times.keys())[-1]
+                    prefix = "    └── " if is_last else "    ├── "
+                    click.echo(f"{prefix}{project}: {hms}")
+
+        click.echo(f"   Total: {total_seconds_2_hms(sum)}")
 
 @click.group()
 def fm():
     """Zit FileManager - Manage historical Zit data"""
     pass
 
-@fm.command(name='list-all') # New command list-all
-def list_all_files():
+@fm.command(name='list') # New command list-all
+@click.option('--all', '-a', is_flag=True, help='Show all files')   
+def list_all_files(all):
     """List all available data files."""
     manager = ZitFileManager()
-    files = manager.get_all_files()
+    if all:
+        files = sorted(manager.get_all_dates())
+    else:
+        files = sorted(manager.get_all_dates())[-10:]
     if not files:
         click.echo("No data files found.")
         return
     
     click.echo("Available data files:")
-    for file in sorted(files):
-        click.echo(f"- {file.name}")
+    print_files(files)
 
-@fm.command(name='list-range') # Renamed command
-@click.option('--start-date', '-s', type=str, help='Start date (YYYY-MM-DD)')
-@click.option('--end-date', '-e', type=str, help='End date (YYYY-MM-DD)')
-def list_files_in_range(start_date, end_date):
-    """List available data files within a specific date range."""
+@fm.command(name='remove')
+def remove_file():
+    """Remove a data file by its index number."""
     manager = ZitFileManager()
+    files = sorted(manager.get_all_dates())
     
-    start_dt = parse_date(start_date) if start_date else None
-    end_dt = parse_date(end_date) if end_date else None
-
-    if start_date and not start_dt:
-        click.echo("Error: Invalid start date format. Use YYYY-MM-DD.", err=True)
-        sys.exit(1)
-    if end_date and not end_dt:
-        click.echo("Error: Invalid end date format. Use YYYY-MM-DD.", err=True)
-        sys.exit(1)
-
-    if start_dt and end_dt and start_dt > end_dt:
-        click.echo("Error: Start date cannot be after end date.", err=True)
-        sys.exit(1)
-
-    # Default to a large range if only one date is provided
-    if start_dt and not end_dt:
-        end_dt = datetime.now() + timedelta(days=365*10) # Far future default end
-    if end_dt and not start_dt:
-        start_dt = datetime.now() - timedelta(days=365*10) # Far past default start
-
-    if start_dt and end_dt:
-        files = manager.get_files_in_date_range(start_dt, end_dt)
-        click.echo(f"Data files between {start_dt.strftime('%Y-%m-%d')} and {end_dt.strftime('%Y-%m-%d')}:")
-    else:
-        # This case should ideally not be hit if options are mandatory or have defaults,
-        # but keeping it for safety. It duplicates list-all behavior.
-        files = manager.get_all_files()
-        click.echo("All available data files:") 
-
     if not files:
         click.echo("No data files found.")
         return
+    print_files(files)
+    file_index = click.prompt("Enter the index of the file to remove", type=int)
+
+    if file_index < 0 or file_index >= len(files):
+        click.echo(f"Error: Invalid file index. Please choose between 0 and {len(files)-1}.", err=True)
+        sys.exit(1)
     
-    # Print sorted file names
-    for file in sorted(files):
-        click.echo(f"- {file.name}")
-
-@fm.command()
-@click.option('--start-date', '-s', type=str, help='Start date (YYYY-MM-DD)')
-@click.option('--end-date', '-e', type=str, help='End date (YYYY-MM-DD)')
-@click.option('--project', '-p', type=str, help='Filter by project name')
-def show(start_date, end_date, project):
-    """Show events, optionally filtered by date range and/or project."""
-    manager = ZitFileManager()
-
-    # Default date range: last 7 days
-    end_dt = parse_date(end_date) if end_date else datetime.now()
-    start_dt = parse_date(start_date) if start_date else end_dt - timedelta(days=7)
-
-    if start_date and not start_dt:
-        click.echo("Error: Invalid start date format. Use YYYY-MM-DD.", err=True)
-        sys.exit(1)
-    if end_date and not end_dt:
-        click.echo("Error: Invalid end date format. Use YYYY-MM-DD.", err=True)
-        sys.exit(1)
-        
-    if start_dt > end_dt:
-        click.echo("Error: Start date cannot be after end date.", err=True)
-        sys.exit(1)
-
-    click.echo(f"Showing events from {start_dt.strftime('%Y-%m-%d')} to {end_dt.strftime('%Y-%m-%d')}")
-    if project:
-        click.echo(f"Filtering for project: {project}")
-        events = manager.get_project_events(project, start_dt, end_dt)
-    else:
-        events = manager.get_all_events(start_dt, end_dt)
-
-    if not events:
-        click.echo("No events found for the specified criteria.")
-        return
-
-    print_events_with_index(events) # Use the imported print function
+    file_to_remove = files[file_index]
+    if click.confirm(f"Are you sure you want to remove {file_to_remove.stem}?"):
+        try:
+            storage = Storage()
+            storage.data_file = storage.data_dir / file_to_remove
+            storage.remove_data_file()
+            subtask_storage = SubtaskStorage()
+            subtask_storage.data_file = subtask_storage.data_dir / file_to_remove
+            subtask_storage.remove_data_file()
+            click.echo(f"Successfully removed {file_to_remove.stem}")
+        except Exception as e:
+            click.echo(f"Error removing file: {str(e)}", err=True)
+            sys.exit(1)
 
 @fm.command()
 @click.option('--start-date', '-s', type=str, help='Start date (YYYY-MM-DD), defaults to 7 days ago')

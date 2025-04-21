@@ -25,6 +25,11 @@ Linux:
 ```
 curl -sSL https://raw.githubusercontent.com/Thomacdebabo/zit/main/install_zit.sh | bash
 ```
+
+zit-fm:
+```
+curl -sSL https://raw.githubusercontent.com/Thomacdebabo/zit/main/install_zit_fm.sh | bash
+```
 # Implementation
 - CLI interface which just lets me write to a file directly
 
@@ -33,6 +38,12 @@ Use pyinstaller to get the zit executable
 ``` bash
 pyinstaller --onefile --name zit run_zit.py
 mv ./dist/zit ~/.local/bin
+```
+Also to get zit-fm
+``` bash
+pyinstaller --onefile --name zit-fm run_zit_fm.py
+mv ./dist/zit-fm ~/.local/bin
+
 ```
 
 # Timetracking
