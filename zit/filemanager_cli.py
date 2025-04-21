@@ -8,7 +8,7 @@ from .filemanager import ZitFileManager
 from .print import print_events_with_index, print_project_times, total_seconds_2_hms # Import the necessary print function
 import sys # Import sys for exit
 from collections import defaultdict # Import defaultdict for aggregating times
-from .storage import Storage, SubtaskStorage
+from .storage import Storage, SubtaskStorage, Project, Subtask
 from .calculate import calculate_project_times
 def build_project_dict(events: list[Project | Subtask]):
     project_dict = {}
@@ -25,6 +25,7 @@ def parse_date(date_str: str) -> datetime | None:
     except ValueError:
         return None
 def print_files(files):
+    total_sum = 0
     for i, file in enumerate(files) :
         click.echo(f"[{i}] {file.stem}")
         # Get the events for this file
@@ -45,7 +46,9 @@ def print_files(files):
                     click.echo(f"{prefix}{project}: {hms}")
 
         click.echo(f"   Total: {total_seconds_2_hms(sum)}")
-
+        total_sum += sum
+    click.echo("------")
+    click.echo(f"Total: {total_seconds_2_hms(total_sum)}")
 @click.group()
 def fm():
     """Zit FileManager - Manage historical Zit data"""
@@ -97,9 +100,6 @@ def remove_file():
             click.echo(f"Error removing file: {str(e)}", err=True)
             sys.exit(1)
 
-@fm.command()
-@click.option('--start-date', '-s', type=str, help='Start date (YYYY-MM-DD), defaults to 7 days ago')
-@click.option('--end-date', '-e', type=str, help='End date (YYYY-MM-DD), defaults to today')
 def status(start_date, end_date):
     """Show total time spent on each project within a date range."""
     manager = ZitFileManager()
