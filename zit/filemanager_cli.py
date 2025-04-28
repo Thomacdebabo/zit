@@ -10,7 +10,7 @@ import sys # Import sys for exit
 from collections import defaultdict # Import defaultdict for aggregating times
 from .storage import Storage, SubtaskStorage, Project, Subtask
 from .calculate import calculate_project_times, add_project_times
-
+from .events import sort_events, create_subtask_dict
 from .filemanager import ZitFileManager
 def parse_date(date_str: str) -> datetime | None:
     """Helper function to parse YYYY-MM-DD date strings."""
@@ -111,5 +111,36 @@ def status(all):
             pt,_,_ = calculate_project_times(events)
             project_times = add_project_times(project_times, pt)
     print_project_times(project_times)
+
+@fm.command(name='lprojects')
+def lprojects():
+    """List all projects in all files."""
+    manager = ZitFileManager()
+    files = sorted(manager.get_all_dates())
+    all_projects = set()
+    
+    for file in files:
+        click.echo(f"[{file.stem}]")
+        storage = Storage(file.stem)
+        sub_storage = SubtaskStorage(file.stem)
+        events = storage.get_events()
+        
+        sub_events = sub_storage.get_events()
+        all_events = sort_events(events, sub_events)
+        subtask_dict = create_subtask_dict(all_events)
+
+        for project, subtasks in subtask_dict.items():
+            if project in storage.exclude_projects:
+                continue
+            click.echo(f"{project}:")
+            for subtask in subtasks:
+                click.echo(f"  {subtask.name}")
+
+    for project in sorted(all_projects):
+        if project not in storage.exclude_projects:
+            click.echo(project)
+
+
+
 if __name__ == '__main__':
     fm()

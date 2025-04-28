@@ -1,19 +1,13 @@
 import csv
 from datetime import datetime, timedelta
 from pathlib import Path
-from pydantic import BaseModel
 from typing import Optional
 import os
 import time
 DATA_DIR = Path.home() / '.zit'
 TRASH_DIR = Path.home() / '.zit/trash'
 
-class Project(BaseModel):
-    timestamp: datetime
-    name: str
-
-class Subtask(Project):
-    note: str
+from zit.events import Project, Subtask
 
 def project_2_row(project):
     return [project.timestamp, project.name]
