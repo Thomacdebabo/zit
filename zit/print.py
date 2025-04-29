@@ -1,6 +1,6 @@
 import click
 from .calculate import calculate_interval, calculate_ongoing_interval
-
+from .events import *
 from enum import Enum, auto
 
 DEFAULT_MAX_WIDTH = 70
@@ -56,30 +56,25 @@ def print_intervals(events):
 def print_events_and_subtasks(events, sub_events, project_times, verbosity: VerbosityLevel = VerbosityLevel.FULL_NOTES):
     pretty_print_title("Events and Subtasks:")
     
-    # Combine and sort all events chronologically
+
     all_events = []
     max_project_length = 0
-    for event in events:
-        all_events.append((event.timestamp, event, "main"))
-        max_project_length = max(max_project_length, len(event.name))
-    for sub_event in sub_events:
-        all_events.append((sub_event.timestamp, sub_event, "sub"))
-    # Sort by timestamp first, then by event type (main before sub)
-    all_events.sort(key=lambda x: (x[0], 0 if x[2] == "main" else 1))
+    all_events = sort_events(events, sub_events)
     
     pad_length = max(max_project_length + 10, DEFAULT_MAX_WIDTH-20)
+
     # Print events in chronological order
-    for i, (timestamp, event, event_type) in enumerate(all_events):
+    for i, event in enumerate(all_events):
         print_string = ""
         print_note = ""
-        if event_type == "main":
+        if check_type(event, Project):
             if event.name in ["STOP"]:
                 print_string += "  └─"
             else:
                 print_string += event.name + " "
             print_string = print_string.ljust(pad_length, "─")
         else:
-            if i + 1 < len(all_events) and (all_events[i+1][2] == "sub" or all_events[i+1][1].name == "STOP"):
+            if i + 1 < len(all_events) and (check_type(all_events[i+1], Subtask) or all_events[i+1].name == "STOP"):
                 print_string += f"  ├─ "
                 print_note += "  │  "
             else:
@@ -88,8 +83,8 @@ def print_events_and_subtasks(events, sub_events, project_times, verbosity: Verb
             print_string += event.name
             print_string = print_string.ljust(pad_length, " ")
 
-        print_string += f" {time_2_str(timestamp)}"
-        if event_type == "main":
+        print_string += f" {time_2_str(event.timestamp)}"
+        if check_type(event, Project):
             if event.name in project_times and event.name != "STOP":  
                 time_seconds = project_times[event.name]
                 print_string += " | " + total_seconds_2_hms(time_seconds)
@@ -97,7 +92,7 @@ def print_events_and_subtasks(events, sub_events, project_times, verbosity: Verb
                 print_string += " ──────────"
         else:
             if i + 1 < len(all_events):
-                interval = calculate_interval(event, all_events[i+1][1]).total_seconds()
+                interval = calculate_interval(event, all_events[i+1]).total_seconds()
             else:
                 interval = calculate_ongoing_interval(event)
 
@@ -105,13 +100,14 @@ def print_events_and_subtasks(events, sub_events, project_times, verbosity: Verb
 
         click.echo(print_string)
         
-        # Handle notes based on verbosity level
-        if event_type == "sub" and event.note != "" and verbosity != VerbosityLevel.NO_NOTES:
-            
+        if check_type(event, Subtask) and event.note != "" and verbosity != VerbosityLevel.NO_NOTES:
             if verbosity == VerbosityLevel.SINGLE_LINE_NOTES:
                 # Only show first line of note
                 note_lines = split_line(event.note, pad_length+11)
-                click.echo(print_note + f" └─ {note_lines[0]}" + "...")
+                printline = print_note + f" └─ {note_lines[0]}"
+                if len(note_lines) > 1:
+                    printline += "..."
+                click.echo(printline)
             else:  # FULL_NOTES
                 note_lines = split_line(event.note, pad_length+14)
                 for i, line in enumerate(note_lines):
@@ -119,6 +115,7 @@ def print_events_and_subtasks(events, sub_events, project_times, verbosity: Verb
                         click.echo(print_note + f" └─ {line}")
                     else:
                         click.echo(print_note + f"    {line}")
+
 def print_events_with_index(events):
     for i, event in enumerate(events):
         click.echo(f"{i}: {event.name} - {time_2_str(event.timestamp)}")
@@ -127,7 +124,6 @@ def print_project_times(project_times):
     pretty_print_title("Time per project:")
     for project, total_time in sorted(project_times.items(), key=lambda item: item[1], reverse=True):
         string = f"{project}".ljust(DEFAULT_MAX_WIDTH-8) + f"{total_seconds_2_hms(total_time)}"
-
         click.echo(string)
 
 def print_ongoing_interval(event):
