@@ -8,8 +8,8 @@ import getpass
 import platform
 from pathlib import Path
 
-from ..sys_storage import SystemStorage
-from ..sys_events import SystemEvent, SystemEventType
+from .sys_storage import SystemStorage
+from .sys_events import SystemEvent, SystemEventType
 from ..terminal import print_string
 
 def parse_systemd_journal(start_date=None, end_date=None):

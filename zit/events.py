@@ -36,6 +36,13 @@ class GitCommit(BaseModel):
     author: str
     email: str
 
+    def from_row(row):
+        timestamp = load_date(row[0])
+        return GitCommit(timestamp=timestamp, hash=row[1], message=row[2], author=row[3], email=row[4])
+    
+    def to_row(self):
+        return [self.timestamp, self.hash, self.message, self.author, self.email]
+
 def check_type(event, t):
     return type(event) is t
 

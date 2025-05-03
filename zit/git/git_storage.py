@@ -10,14 +10,7 @@ from ..events import Project, Subtask, GitCommit
 # Define directory for git-specific data
 GIT_DATA_DIR = Path.home() / '.zit' / 'git'
 
-def commit_2_row(commit):
-    return [commit.timestamp, commit.hash, commit.message, commit.author, commit.email]
 
-def row_2_commit(row):
-    return GitCommit(timestamp=row[0], hash=row[1], message=row[2], author=row[3], email=row[4])
-
-def load_date(date):
-    return datetime.fromisoformat(date)
 
 class GitStorage:
     def __init__(self, project_name='default', current_date=datetime.now().strftime('%Y-%m-%d')):
@@ -43,8 +36,7 @@ class GitStorage:
         with open(self.data_file, 'r') as f:
             reader = csv.reader(f)
             for row in reader:
-                row[0] = load_date(row[0])
-                commit = row_2_commit(row)
+                commit = GitCommit.from_row(row)
                 commits.append(commit)
 
         return self._sort_events(commits)
@@ -71,7 +63,7 @@ class GitStorage:
         with open(self.data_file, 'w') as f:
             writer = csv.writer(f)
             for event in events:
-                writer.writerow(commit_2_row(event))
+                writer.writerow(event.to_row())
 
     def get_events(self) -> list[GitCommit]:
         events = self._read_events()
@@ -86,7 +78,7 @@ class GitStorage:
                 return
         with open(self.data_file, 'a') as f:
             writer = csv.writer(f)
-            writer.writerow(commit_2_row(event))
+            writer.writerow(event.to_row())
 
     def _sort_events(self, events: list[GitCommit]) -> list[GitCommit]:
         events.sort(key=lambda event: event.timestamp)
