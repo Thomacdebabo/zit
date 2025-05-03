@@ -9,6 +9,21 @@ from .calculate import *
 from .print import *
 from .verify import *
 from .filemanager import ZitFileManager
+
+def parse_time(time):
+            # Parse the time format (HHMM)
+    if len(time) != 4 or not time.isdigit():
+        raise ValueError("Time must be in HHMM format (e.g., 1200 for noon)")
+        
+    hour = int(time[:2])
+    minute = int(time[2:])
+        
+    if hour < 0 or hour > 23 or minute < 0 or minute > 59:
+        raise ValueError("Invalid time values")
+    now = datetime.now()
+    event_time = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+    return event_time
+
 @click.group()
 def cli():
     """Zit - Zimple Interval Tracker: A minimal time tracking CLI tool"""
@@ -33,11 +48,21 @@ def stop():
     storage.add_event(Project(timestamp=datetime.now(), name="STOP"))
 
 @cli.command()
-def lunch():
+@click.argument('time', required=False, default=None, metavar='TIME (format: HHMM)')
+def lunch(time):
     """Start tracking time for lunch"""
+
     click.echo("Starting lunch time tracking...")
+    if time:
+        try:
+            event_time = parse_time(time)
+        except ValueError as e:
+            click.echo(f"Error: {str(e)}", err=True)
+            return
+    else:
+        event_time = datetime.now()
     storage = Storage()
-    storage.add_event(Project(timestamp=datetime.now(), name="LUNCH"))
+    storage.add_event(Project(timestamp=event_time, name="LUNCH"))
 
 @cli.command()
 @click.option('--yesterday', is_flag=True, help='Show status for yesterday')
@@ -74,35 +99,25 @@ def add(project, time, subtask, note):
     """Add a project with a specific time (format: HHMM, e.g. 1200 for noon)
     Use --subtask (or --sub, -s) flag to add a subtask instead of a main project"""
     try:
-        # Parse the time format (HHMM)
-        if len(time) != 4 or not time.isdigit():
-            click.echo("Error: Time must be in HHMM format (e.g., 1200 for noon)", err=True)
-            return
-            
-        hour = int(time[:2])
-        minute = int(time[2:])
-        
-        if hour < 0 or hour > 23 or minute < 0 or minute > 59:
-            click.echo("Error: Invalid time values", err=True)
-            return
-            
-        # Create a datetime object for today with the specified time
-        now = datetime.now()
-        event_time = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
-        storage = Storage()
-        if subtask:
-            if storage.get_project_at_time(event_time) is None:
-                click.echo("No current task. No subtask added.")
-                return
-            sub_storage = SubtaskStorage()
-            sub_storage.add_event(Subtask(timestamp=event_time, name=project, note=note))
-            click.echo(f"Added subtask: {project} at {event_time.strftime('%H:%M')}")
-        else:
-            
-            storage.add_event(Project(timestamp=event_time, name=project))
-            click.echo(f"Added project: {project} at {event_time.strftime('%H:%M')}")
+        event_time = parse_time(time) 
     except ValueError as e:
         click.echo(f"Error: {str(e)}", err=True)
+        return
+    # Create a datetime object for today with the specified time
+
+    storage = Storage()
+    if subtask:
+        if storage.get_project_at_time(event_time) is None:
+            click.echo("No current task. No subtask added.")
+            return
+        sub_storage = SubtaskStorage()
+        sub_storage.add_event(Subtask(timestamp=event_time, name=project, note=note))
+        click.echo(f"Added subtask: {project} at {event_time.strftime('%H:%M')}")
+    else:
+        
+        storage.add_event(Project(timestamp=event_time, name=project))
+        click.echo(f"Added project: {project} at {event_time.strftime('%H:%M')}")
+
 
 @cli.command()
 def clear():
