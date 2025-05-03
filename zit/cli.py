@@ -33,6 +33,13 @@ def stop():
     storage.add_event(Project(timestamp=datetime.now(), name="STOP"))
 
 @cli.command()
+def lunch():
+    """Start tracking time for lunch"""
+    click.echo("Starting lunch time tracking...")
+    storage = Storage()
+    storage.add_event(Project(timestamp=datetime.now(), name="LUNCH"))
+
+@cli.command()
 @click.option('--yesterday', is_flag=True, help='Show status for yesterday')
 def status(yesterday):
     """Show current tracking status"""
