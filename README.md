@@ -30,6 +30,11 @@ zit-fm:
 ```
 curl -sSL https://raw.githubusercontent.com/Thomacdebabo/zit/main/install_zit_fm.sh | bash
 ```
+
+zit-git:
+```
+curl -sSL https://raw.githubusercontent.com/Thomacdebabo/zit/main/install_zit_git.sh | bash
+```
 # Implementation
 - CLI interface which just lets me write to a file directly
 
