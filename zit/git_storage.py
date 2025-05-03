@@ -10,20 +10,11 @@ from .events import Project, Subtask, GitCommit
 # Define directory for git-specific data
 GIT_DATA_DIR = Path.home() / '.zit' / 'git'
 
-def project_2_row(project):
-    return [project.timestamp, project.name]
+def commit_2_row(commit):
+    return [commit.timestamp, commit.hash, commit.message, commit.author, commit.email]
 
-def subtask_2_row(subtask):
-    return [subtask.timestamp, subtask.name, subtask.note]
-
-def row_2_project(row):
-    return Project(timestamp=row[0], name=row[1])
-
-def row_2_subtask(row):
-    if len(row) == 3:   
-        return Subtask(timestamp=row[0], name=row[1], note=row[2])
-    else:
-        return Subtask(timestamp=row[0], name=row[1], note="")
+def row_2_commit(row):
+    return GitCommit(timestamp=row[0], hash=row[1], message=row[2], author=row[3], email=row[4])
 
 def load_date(date):
     return datetime.fromisoformat(date)
@@ -36,27 +27,27 @@ class GitStorage:
         self._ensure_data_dir()
         self.current_date = current_date
         self.data_file = self.data_dir / f'{self.current_date}.csv'
-        self.exclude_projects = ['STOP', 'LUNCH']
+
 
     def _ensure_data_dir(self):
         """Create data directory if it doesn't exist"""
         self.data_dir.mkdir(exist_ok=True, parents=True)
         self.trash_dir.mkdir(exist_ok=True, parents=True)
 
-    def _read_events(self) -> list[Project]:
+    def _read_events(self) -> list[GitCommit]:
         """Read all events from the daily file"""
         if not self.data_file.exists():
             return []
 
-        projects = []
+        commits = []
         with open(self.data_file, 'r') as f:
             reader = csv.reader(f)
             for row in reader:
                 row[0] = load_date(row[0])
-                project = row_2_project(row)
-                projects.append(project)
+                commit = row_2_commit(row)
+                commits.append(commit)
 
-        return self._sort_events(projects)
+        return self._sort_events(commits)
 
     def _clean_file(self):
         """Clean the daily file"""
@@ -65,28 +56,28 @@ class GitStorage:
         events = self._combine_events(events)
         self._write_events(events)
 
-    def _combine_events(self, events: list[Project | Subtask]) -> list[Project | Subtask]:
+    def _combine_events(self, events: list[GitCommit]) -> list[GitCommit]:
         """Combine events with the same project name following the same logic as the CLI"""
         combined_events = []
         for event in events:
             if combined_events:
-                if combined_events[-1].name == event.name:
+                if combined_events[-1].hash == event.hash:
                     continue
             combined_events.append(event)
         return combined_events
 
-    def _write_events(self, events: list[Project]):
+    def _write_events(self, events: list[GitCommit]):
         """Write events to the daily file"""
         with open(self.data_file, 'w') as f:
             writer = csv.writer(f)
             for event in events:
-                writer.writerow(project_2_row(event))
+                writer.writerow(commit_2_row(event))
 
-    def get_events(self) -> list[Project | Subtask]:
+    def get_events(self) -> list[GitCommit]:
         events = self._read_events()
         return self._sort_events(events)
 
-    def add_event(self, event: Project):
+    def add_event(self, event: GitCommit):
         """Append a single event to the daily file"""
         events = self._read_events()
         for existing_event in events:
@@ -95,9 +86,9 @@ class GitStorage:
                 return
         with open(self.data_file, 'a') as f:
             writer = csv.writer(f)
-            writer.writerow(project_2_row(event))
+            writer.writerow(commit_2_row(event))
 
-    def _sort_events(self, events: list[Project | Subtask]) -> list[Project | Subtask]:
+    def _sort_events(self, events: list[GitCommit]) -> list[GitCommit]:
         events.sort(key=lambda event: event.timestamp)
         return events
 
@@ -118,19 +109,17 @@ class GitStorage:
         events = self.get_events()
         if len(events) == 0:
             return None
-        if events[-1].name in self.exclude_projects:
-            return None
-        return events[-1].name
+        return events[-1].hash
         
-    def get_project_at_time(self, timestamp: datetime) -> Optional[Project]:
+    def get_project_at_time(self, timestamp: datetime) -> Optional[GitCommit]:
         events = self.get_events()
-        project = None
+        commit = None
         for event in events:
             if event.timestamp <= timestamp:
-                project = event
+                commit = event
             else:
                 break
-        return project
+        return commit
 
     @staticmethod
     def list_projects():
@@ -139,40 +128,3 @@ class GitStorage:
         if GIT_DATA_DIR.exists():
             projects = [p.name for p in GIT_DATA_DIR.iterdir() if p.is_dir() and p.name != 'trash']
         return projects
-
-class GitSubtaskStorage(GitStorage):
-    def __init__(self, project_name='default', current_date=datetime.now().strftime('%Y-%m-%d')):
-        super().__init__(project_name, current_date)
-        self.data_file = self.data_dir / f'{self.current_date}_subtasks.csv'
-
-    def _read_events(self) -> list[Subtask]:
-        """Read all events from the daily file"""
-        if not self.data_file.exists():
-            return []
-
-        subtasks = []
-        with open(self.data_file, 'r') as f:
-            reader = csv.reader(f)
-            for row in reader:
-                row[0] = load_date(row[0])
-                subtask = row_2_subtask(row)
-                subtasks.append(subtask)
-        return subtasks
-
-    def _write_events(self, events: list[Subtask]):
-        """Write events to the daily file"""
-        with open(self.data_file, 'w') as f:
-            writer = csv.writer(f)
-            for event in events:
-                writer.writerow(subtask_2_row(event))
-        
-    def add_event(self, event: Subtask):
-        """Append a single event to the daily file"""
-        events = self._read_events()
-        for existing_event in events:
-            if existing_event.timestamp == event.timestamp:
-                print(f"Event already exists at {event.timestamp}")
-                return
-        with open(self.data_file, 'a') as f:
-            writer = csv.writer(f)
-            writer.writerow(subtask_2_row(event)) 

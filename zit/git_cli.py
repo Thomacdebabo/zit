@@ -6,22 +6,22 @@ from datetime import datetime
 import os
 import shutil
 from pathlib import Path
-from .git_storage import GitStorage, GitSubtaskStorage, GIT_DATA_DIR
-from .events import Project, Subtask
-
+from .git_storage import GitStorage, GIT_DATA_DIR
+from .events import Project, Subtask, GitCommit
+from .print import print_events_with_index
 @click.group()
 def git_cli():
     """Git integration for Zit time tracking"""
     pass
 
-def get_git_commits(directory=None, since=None, author=None, limit=None):
+def get_git_commits(directory=None, since=None, author=None, limit=None, email=None):
     """Get git commits from repository"""
     cmd = ['git']
     
     if directory:
         cmd.extend(['-C', directory])
     
-    cmd.extend(['log', '--pretty=format:%H|%an|%at|%s'])
+    cmd.extend(['log', '--pretty=format:%H|%an|%at|%s|%ae'])
     
     if since:
         cmd.extend(['--since', since])
@@ -31,6 +31,9 @@ def get_git_commits(directory=None, since=None, author=None, limit=None):
         
     if limit:
         cmd.extend(['-n', str(limit)])
+    
+    if email:
+        cmd.extend(['--author-email', email])
         
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
@@ -40,17 +43,23 @@ def get_git_commits(directory=None, since=None, author=None, limit=None):
             if not line:
                 continue
                 
-            parts = line.split('|', 3)
-            if len(parts) < 4:
-                continue
+            parts = line.split('|', 4)  # Split into 5 parts max
+            if len(parts) < 5:
+                # Handle case where email might be missing
+                if len(parts) == 4:
+                    # Add empty email
+                    parts.append("")
+                else:
+                    continue
                 
-            commit_hash, author, timestamp, message = parts
+            commit_hash, author, timestamp, message, email = parts
             # Convert Unix timestamp to datetime
             commit_time = datetime.fromtimestamp(int(timestamp))
             
             commits.append({
                 'hash': commit_hash,
                 'author': author,
+                'email': email,
                 'timestamp': commit_time,
                 'message': message
             })
@@ -100,7 +109,6 @@ def import_commits(directory, since, author, limit, as_subtasks, project_name):
     # Process commits for each date separately
     for date_str, date_commits in commits_by_date.items():
         storage = GitStorage(project_name=project_name, current_date=date_str)
-        subtask_storage = GitSubtaskStorage(project_name=project_name, current_date=date_str)
         
         click.echo(f"\nProcessing {len(date_commits)} commits for date {date_str}...")
         
@@ -108,31 +116,28 @@ def import_commits(directory, since, author, limit, as_subtasks, project_name):
             timestamp = commit['timestamp']
             message = commit['message']
             commit_hash = commit['hash'][:7]  # Short hash
-            
+            author = commit['author']
+            email = commit['email']
             if as_subtasks:
                 # Find the project that was active at this time or use the specified project
-                active_project = storage.get_project_at_time(timestamp)
-                if not active_project:
-                    # Create a project entry if none exists at this time
-                    storage.add_event(Project(timestamp=timestamp, name=project_name))
-                    
-                subtask_storage.add_event(Subtask(
+
+                storage.add_event(GitCommit(
                     timestamp=timestamp,
-                    name=f"git:{commit_hash}",
-                    note=message
+                    hash=commit_hash,
+                    message=message,
+                    author=author,
+                    email=email  
                 ))
                 click.echo(f"Added subtask: {message} at {timestamp.strftime('%H:%M')}")
             else:
-                storage.add_event(Project(
+                storage.add_event(GitCommit(
                     timestamp=timestamp,
-                    name=f"{project_name}:{commit_hash}",
+                    hash=commit_hash,
+                    message=message,
+                    author=author,
+                    email=email
                 ))
-                # Add the commit message as a subtask with the same timestamp
-                subtask_storage.add_event(Subtask(
-                    timestamp=timestamp, 
-                    name="commit", 
-                    note=message
-                ))
+
                 click.echo(f"Added project: {message} at {timestamp.strftime('%H:%M')}")
             
             total_imported += 1
@@ -150,42 +155,48 @@ def get_date_files_for_project(project_name):
     return sorted(date_files)
 
 @git_cli.command("list")
-@click.option('--date', '-d', help='List events for a specific date (format: YYYY-MM-DD)')
+@click.option('--date', '-d', default=datetime.now().strftime('%Y-%m-%d'), help='List events for a specific date (format: YYYY-MM-DD)')
+@click.option('--all', '-a', is_flag=True, help='List events for all dates')
 @click.option('--project', '-p', help='Project name to list events for')
-def list_git_events(date, project):
+def list_git_events(date, all, project):
     """List all git events"""
     if not project:
-        # List all projects
+        # Try to get project name from current directory
+        current_dir = os.path.basename(os.path.abspath(os.getcwd()))
         projects = GitStorage.list_projects()
-        if not projects:
-            click.echo("No git projects found.")
+        
+        if current_dir in projects:
+            project = current_dir
+        else:
+            if not projects:
+                click.echo("No git projects found.")
+                return
+            
+            click.echo("\nAvailable git projects:")
+            for i, proj in enumerate(projects, 0):
+                click.echo(f"[{i}] {proj}")
+            index = click.prompt("Enter project number to view events", type=int, default=0)
+            project = projects[index]
+    if all:
+        # Show events for all dates
+        date_files = get_date_files_for_project(project)
+        
+        if not date_files:
+            click.echo(f"No git events found for project '{project}'.")
             return
-        
-        click.echo("\nAvailable git projects:")
-        for proj in projects:
-            click.echo(f"- {proj}")
-        
-        project = click.prompt("Enter project name to view events", default=projects[0])
-    
     if date:
         # Show events for a specific date
         storage = GitStorage(project_name=project, current_date=date)
-        subtask_storage = GitSubtaskStorage(project_name=project, current_date=date)
         
-        projects_list = storage.get_events()
-        subtasks_list = subtask_storage.get_events()
+        commits = storage.get_events()
         
-        if not projects_list and not subtasks_list:
+        if not commits:
             click.echo(f"No git events found for project '{project}' on {date}.")
             return
         
         click.echo(f"\nGit Projects for '{project}' on {date}:")
-        for proj in projects_list:
-            click.echo(f"{proj.timestamp.strftime('%H:%M')} - {proj.name}")
-        
-        click.echo(f"\nGit Subtasks for '{project}' on {date}:")
-        for subtask in subtasks_list:
-            click.echo(f"{subtask.timestamp.strftime('%H:%M')} - {subtask.name}: {subtask.note}")
+        for commit in commits:
+            click.echo(f"{commit.timestamp.strftime('%H:%M')} - {commit.message}")
     else:
         # Show events for all dates
         date_files = get_date_files_for_project(project)
@@ -197,23 +208,20 @@ def list_git_events(date, project):
         for date_file in date_files:
             date_str = date_file.stem
             storage = GitStorage(project_name=project, current_date=date_str)
-            subtask_storage = GitSubtaskStorage(project_name=project, current_date=date_str)
+
+            commits = storage.get_events()
             
-            projects_list = storage.get_events()
-            subtasks_list = subtask_storage.get_events()
-            
-            if projects_list or subtasks_list:
+            if commits:
                 click.echo(f"\n--- Events for {date_str} ---")
                 
-                if projects_list:
-                    click.echo(f"\nProjects:")
-                    for proj in projects_list:
-                        click.echo(f"{proj.timestamp.strftime('%H:%M')} - {proj.name}")
-                
-                if subtasks_list:
-                    click.echo(f"\nSubtasks:")
-                    for subtask in subtasks_list:
-                        click.echo(f"{subtask.timestamp.strftime('%H:%M')} - {subtask.name}: {subtask.note}")
+                if commits:
+                    click.echo(f"\nCommits:")
+                    current_author = None
+                    for commit in commits:
+                        if current_author != commit.author:
+                            click.echo(f"    by {commit.author} ({commit.email})")
+                            current_author = commit.author
+                        click.echo(f"    {commit.timestamp.strftime('%H:%M')} - {commit.message}")
 
 @git_cli.command("projects")
 def list_git_projects():
