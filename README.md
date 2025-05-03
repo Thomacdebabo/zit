@@ -45,10 +45,28 @@ pyinstaller --onefile --name zit-fm run_zit_fm.py
 mv ./dist/zit-fm ~/.local/bin
 
 ```
+And zit-git
+``` bash
+pyinstaller --onefile --name zit-git run_zit_git.py
+mv ./dist/zit-git ~/.local/bin
+
+```
 
 # TODO
+## General
 - [ ] implement server version
 - [ ] testing
+- [x] import timestamps from git
+- [ ] import timestamps from system
+
+## zit-git
+- [ ] installer
+- [ ] better printing
+- [ ] figure out which features are needed
+- [ ] integrate with subtasks
+
+
+
 
 
 # Timetracking
