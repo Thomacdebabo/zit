@@ -139,11 +139,10 @@ def monitor_system(apps, interval):
         print_string(f"Unsupported system: {system}")
         return
 
-@sys_cli.command("parse-logs")
+@sys_cli.command("import")
 @click.option('--start-date', help='Start date for log parsing (format: YYYY-MM-DD)')
 @click.option('--end-date', help='End date for log parsing (format: YYYY-MM-DD)')
-@click.option('--save', is_flag=True, help='Save extracted events to Zit system storage')
-def parse_logs(start_date, end_date, save):
+def parse_logs(start_date, end_date):
     """Parse system logs to extract events like startup and sleep/wake"""
     
     # Validate date formats if provided
@@ -170,13 +169,10 @@ def parse_logs(start_date, end_date, save):
         
     print_string("\nExtracted Events:")
     print_events(events)
-    
-    if save:
-        print_string("\nSaving events to storage...")
-        num_saved = save_events_to_storage(events)
-        print_string(f"Saved {num_saved} events.")
-    else:
-        print_string("\nUse --save to store these events in Zit system storage.")
+
+    print_string("\nSaving events to storage...")
+    num_saved = save_events_to_storage(events)
+    print_string(f"Saved {num_saved} events.")
 
 @sys_cli.command("remove")
 @click.option('--date', '-d', help='Remove events for a specific date (format: YYYY-MM-DD)')
