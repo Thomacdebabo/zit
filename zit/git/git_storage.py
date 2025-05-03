@@ -5,7 +5,7 @@ from typing import Optional
 import os
 import time
 
-from .events import Project, Subtask, GitCommit
+from ..events import Project, Subtask, GitCommit
 
 # Define directory for git-specific data
 GIT_DATA_DIR = Path.home() / '.zit' / 'git'

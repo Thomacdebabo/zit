@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from .terminal import *
+from ..terminal import *
 import click
 import subprocess
 from datetime import datetime
@@ -7,8 +7,8 @@ import os
 import shutil
 from pathlib import Path
 from .git_storage import GitStorage, GIT_DATA_DIR
-from .events import Project, Subtask, GitCommit
-from .print import print_events_with_index
+from ..events import Project, Subtask, GitCommit
+from ..print import print_events_with_index
 @click.group()
 def git_cli():
     """Git integration for Zit time tracking"""

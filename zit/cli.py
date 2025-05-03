@@ -9,7 +9,7 @@ from .storage import Project, Subtask
 from .calculate import *
 from .print import *
 from .verify import *
-from .filemanager import ZitFileManager
+from .fm.filemanager import ZitFileManager
 
 def parse_time(time):
             # Parse the time format (HHMM)

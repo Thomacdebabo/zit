@@ -4,14 +4,14 @@ import click
 from datetime import datetime, timedelta
 from pathlib import Path
 from .filemanager import ZitFileManager
-from .terminal import *
+from ..terminal import *
 # We might need printing functions later, similar to cli.py
-from .print import print_events_with_index, print_project_times, total_seconds_2_hms # Import the necessary print function
+from ..print import print_events_with_index, print_project_times, total_seconds_2_hms # Import the necessary print function
 import sys # Import sys for exit
 from collections import defaultdict # Import defaultdict for aggregating times
-from .storage import Storage, SubtaskStorage, Project, Subtask
-from .calculate import calculate_project_times, add_project_times
-from .events import sort_events, create_subtask_dict
+from ..storage import Storage, SubtaskStorage, Project, Subtask
+from ..calculate import calculate_project_times, add_project_times
+from ..events import sort_events, create_subtask_dict
 from .filemanager import ZitFileManager
 def parse_date(date_str: str) -> datetime | None:
     """Helper function to parse YYYY-MM-DD date strings."""

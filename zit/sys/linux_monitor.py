@@ -11,9 +11,9 @@ import getpass
 import psutil
 from pathlib import Path
 
-from .sys_storage import SystemStorage
-from .sys_events import SystemEvent, SystemEventType
-from .terminal import print_string
+from ..sys_storage import SystemStorage
+from ..sys_events import SystemEvent, SystemEventType
+from ..terminal import print_string
 
 # Target applications to monitor (can be extended)
 TARGET_APPS = {

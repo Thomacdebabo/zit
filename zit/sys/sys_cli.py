@@ -10,9 +10,9 @@ import getpass
 from pathlib import Path
 import re
 
-from .terminal import print_string
-from .sys_storage import SystemStorage, SYS_DATA_DIR
-from .sys_events import SystemEvent, SystemEventType
+from ..terminal import print_string
+from ..sys_storage import SystemStorage, SYS_DATA_DIR
+from ..sys_events import SystemEvent, SystemEventType
 from .log_parser import extract_events_from_logs, save_events_to_storage
 
 @click.group()
