@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
+from .terminal import *
 import click
 import subprocess
 from datetime import datetime
@@ -66,7 +66,7 @@ def get_git_commits(directory=None, since=None, author=None, limit=None, email=N
             
         return commits
     except subprocess.CalledProcessError as e:
-        click.echo(f"Error fetching git commits: {e}", err=True)
+        print_string(f"Error fetching git commits: {e}", err=True)
         return []
 
 @git_cli.command("import")
@@ -88,12 +88,12 @@ def import_commits(directory, since, author, limit, as_subtasks, project_name):
         if repo_name:
             project_name = repo_name
     
-    click.echo(f"Importing git commits from {directory} into project '{project_name}'...")
+    print_string(f"Importing git commits from {directory} into project '{project_name}'...")
     
     commits = get_git_commits(directory, since, author, limit)
     
     if not commits:
-        click.echo("No commits found.")
+        print_string("No commits found.")
         return
     
     # Group commits by date
@@ -110,7 +110,7 @@ def import_commits(directory, since, author, limit, as_subtasks, project_name):
     for date_str, date_commits in commits_by_date.items():
         storage = GitStorage(project_name=project_name, current_date=date_str)
         
-        click.echo(f"\nProcessing {len(date_commits)} commits for date {date_str}...")
+        print_string(f"\nProcessing {len(date_commits)} commits for date {date_str}...")
         
         for commit in date_commits:
             timestamp = commit['timestamp']
@@ -128,7 +128,7 @@ def import_commits(directory, since, author, limit, as_subtasks, project_name):
                     author=author,
                     email=email  
                 ))
-                click.echo(f"Added subtask: {message} at {timestamp.strftime('%H:%M')}")
+                print_string(f"Added subtask: {message} at {timestamp.strftime('%H:%M')}")
             else:
                 storage.add_event(GitCommit(
                     timestamp=timestamp,
@@ -138,11 +138,11 @@ def import_commits(directory, since, author, limit, as_subtasks, project_name):
                     email=email
                 ))
 
-                click.echo(f"Added project: {message} at {timestamp.strftime('%H:%M')}")
+                print_string(f"Added project: {message} at {timestamp.strftime('%H:%M')}")
             
             total_imported += 1
     
-    click.echo(f"\nImported {total_imported} commits across {len(commits_by_date)} different dates.")
+    print_string(f"\nImported {total_imported} commits across {len(commits_by_date)} different dates.")
 
 def get_date_files_for_project(project_name):
     """Get all date files for a project"""
@@ -169,12 +169,12 @@ def list_git_events(date, all, project):
             project = current_dir
         else:
             if not projects:
-                click.echo("No git projects found.")
+                print_string("No git projects found.")
                 return
             
-            click.echo("\nAvailable git projects:")
+            print_string("\nAvailable git projects:")
             for i, proj in enumerate(projects, 0):
-                click.echo(f"[{i}] {proj}")
+                print_string(f"[{i}] {proj}")
             index = click.prompt("Enter project number to view events", type=int, default=0)
             project = projects[index]
     if all:
@@ -182,7 +182,7 @@ def list_git_events(date, all, project):
         date_files = get_date_files_for_project(project)
         
         if not date_files:
-            click.echo(f"No git events found for project '{project}'.")
+            print_string(f"No git events found for project '{project}'.")
             return
     if date:
         # Show events for a specific date
@@ -191,18 +191,18 @@ def list_git_events(date, all, project):
         commits = storage.get_events()
         
         if not commits:
-            click.echo(f"No git events found for project '{project}' on {date}.")
+            print_string(f"No git events found for project '{project}' on {date}.")
             return
         
-        click.echo(f"\nGit Projects for '{project}' on {date}:")
+        print_string(f"\nGit Projects for '{project}' on {date}:")
         for commit in commits:
-            click.echo(f"{commit.timestamp.strftime('%H:%M')} - {commit.message}")
+            print_string(f"{commit.timestamp.strftime('%H:%M')} - {commit.message}")
     else:
         # Show events for all dates
         date_files = get_date_files_for_project(project)
         
         if not date_files:
-            click.echo(f"No git events found for project '{project}'.")
+            print_string(f"No git events found for project '{project}'.")
             return
         
         for date_file in date_files:
@@ -212,16 +212,16 @@ def list_git_events(date, all, project):
             commits = storage.get_events()
             
             if commits:
-                click.echo(f"\n--- Events for {date_str} ---")
+                print_string(f"\n--- Events for {date_str} ---")
                 
                 if commits:
-                    click.echo(f"\nCommits:")
+                    print_string(f"\nCommits:")
                     current_author = None
                     for commit in commits:
                         if current_author != commit.author:
-                            click.echo(f"    by {commit.author} ({commit.email})")
+                            print_string(f"    by {commit.author} ({commit.email})")
                             current_author = commit.author
-                        click.echo(f"    {commit.timestamp.strftime('%H:%M')} - {commit.message}")
+                        print_string(f"    {commit.timestamp.strftime('%H:%M')} - {commit.message}")
 
 @git_cli.command("projects")
 def list_git_projects():
@@ -229,12 +229,12 @@ def list_git_projects():
     projects = GitStorage.list_projects()
     
     if not projects:
-        click.echo("No git projects found.")
+        print_string("No git projects found.")
         return
     
-    click.echo("\nGit Projects:")
+    print_string("\nGit Projects:")
     for project in projects:
-        click.echo(f"- {project}")
+        print_string(f"- {project}")
 
 @git_cli.command("remove")
 @click.argument('project_name')
@@ -247,30 +247,30 @@ def remove_git_project(project_name, all):
     if all:
         # Remove all projects
         if not GIT_DATA_DIR.exists():
-            click.echo("No git projects found.")
+            print_string("No git projects found.")
             return
             
         for project_dir in GIT_DATA_DIR.iterdir():
             if project_dir.is_dir():
                 shutil.rmtree(project_dir)
         
-        click.echo("All git projects have been removed.")
+        print_string("All git projects have been removed.")
         return
     
     if not project_name:
         # List projects for selection
         projects = GitStorage.list_projects()
         if not projects:
-            click.echo("No git projects found.")
+            print_string("No git projects found.")
             return
         
-        click.echo("\nAvailable git projects:")
+        print_string("\nAvailable git projects:")
         for i, proj in enumerate(projects, 1):
-            click.echo(f"{i}. {proj}")
+            print_string(f"{i}. {proj}")
         
         selection = click.prompt("Enter project number to remove", type=int, default=1)
         if selection < 1 or selection > len(projects):
-            click.echo("Invalid selection.")
+            print_string("Invalid selection.")
             return
             
         project_name = projects[selection-1]
@@ -278,11 +278,11 @@ def remove_git_project(project_name, all):
     # Remove the project directory
     project_dir = GIT_DATA_DIR / project_name
     if not project_dir.exists():
-        click.echo(f"Project '{project_name}' not found.")
+        print_string(f"Project '{project_name}' not found.")
         return
     
     shutil.rmtree(project_dir)
-    click.echo(f"Project '{project_name}' has been removed.")
+    print_string(f"Project '{project_name}' has been removed.")
 
 if __name__ == '__main__':
     git_cli()
