@@ -21,19 +21,28 @@ Commands:
 - **stop**    Stop tracking time
 - **verify**  Verify the data
 # Install
-Linux:
+All:
 ```
-curl -sSL https://raw.githubusercontent.com/Thomacdebabo/zit/main/install_zit.sh | bash
+curl -sSL https://raw.githubusercontent.com/Thomacdebabo/zit/main/scripts/install.sh | bash
+```
+zit:
+```
+curl -sSL https://raw.githubusercontent.com/Thomacdebabo/zit/main/scripts/install_zit.sh | bash
 ```
 
 zit-fm:
 ```
-curl -sSL https://raw.githubusercontent.com/Thomacdebabo/zit/main/install_zit_fm.sh | bash
+curl -sSL https://raw.githubusercontent.com/Thomacdebabo/zit/main/scripts/install_zit_fm.sh | bash
 ```
 
 zit-git:
 ```
-curl -sSL https://raw.githubusercontent.com/Thomacdebabo/zit/main/install_zit_git.sh | bash
+curl -sSL https://raw.githubusercontent.com/Thomacdebabo/zit/main/scripts/install_zit_git.sh | bash
+```
+
+zit-sys:
+```
+curl -sSL https://raw.githubusercontent.com/Thomacdebabo/zit/main/scripts/install_zit_sys.sh | bash
 ```
 # Implementation
 - CLI interface which just lets me write to a file directly
@@ -62,13 +71,16 @@ mv ./dist/zit-git ~/.local/bin
 - [ ] implement server version
 - [ ] testing
 - [x] import timestamps from git
-- [ ] import timestamps from system
+- [x] import timestamps from system
 
 ## zit-git
-- [ ] installer
+- [x] installer
 - [ ] better printing
 - [ ] figure out which features are needed
 - [ ] integrate with subtasks
+
+## zit-sys
+- [x] installer
 
 
 
