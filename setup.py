@@ -12,6 +12,7 @@ setup(
         'console_scripts': [
             'zit=zit.cli:cli',
             'zit-fm=zit.filemanager_cli:fm',
+            'zit-git=zit.git_cli:git_cli',
         ],
     },
 ) 

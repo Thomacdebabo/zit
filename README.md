@@ -46,6 +46,11 @@ mv ./dist/zit-fm ~/.local/bin
 
 ```
 
+# TODO
+- [ ] implement server version
+- [ ] testing
+
+
 # Timetracking
 ---
 - (estimate) until v0.2.1: ~5h

@@ -8,6 +8,13 @@ class Project(BaseModel):
 class Subtask(Project):
     note: str
 
+class GitCommit(BaseModel):
+    timestamp: datetime
+    hash: str
+    message: str
+    author: str
+    email: str
+
 def check_type(event, t):
     return type(event) is t
 
