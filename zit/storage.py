@@ -9,24 +9,6 @@ TRASH_DIR = Path.home() / '.zit/trash'
 
 from zit.events import Project, Subtask
 
-def project_2_row(project):
-    return [project.timestamp, project.name]
-
-def subtask_2_row(subtask):
-    return [subtask.timestamp, subtask.name, subtask.note]
-
-def row_2_project(row):
-    return Project(timestamp=row[0], name=row[1])
-
-def row_2_subtask(row):
-    if len(row) == 3:   
-        return Subtask(timestamp=row[0], name=row[1], note=row[2])
-    else:
-        return Subtask(timestamp=row[0], name=row[1], note="")
-
-def load_date(date):
-    return datetime.fromisoformat(date)
-
 class Storage:
     def __init__(self, current_date=datetime.now().strftime('%Y-%m-%d')):
         self.data_dir = DATA_DIR
@@ -50,8 +32,7 @@ class Storage:
         with open(self.data_file, 'r') as f:
             reader = csv.reader(f)
             for row in reader:
-                row[0] = load_date(row[0])
-                project = row_2_project(row)
+                project = Project.from_row(row)
                 projects.append(project)
 
 
@@ -79,7 +60,7 @@ class Storage:
         with open(self.data_file, 'w') as f:
             writer = csv.writer(f)
             for event in events:
-                writer.writerow(project_2_row(event))
+                writer.writerow(event.to_row())
 
     def get_events(self) -> list[Project | Subtask]:
         events = self._read_events()
@@ -94,7 +75,7 @@ class Storage:
                 return
         with open(self.data_file, 'a') as f:
             writer = csv.writer(f)
-            writer.writerow(project_2_row(event))
+            writer.writerow(event.to_row())
 
     def _sort_events(self, events: list[Project | Subtask]) -> list[Project | Subtask]:
         events.sort(key=lambda event: event.timestamp)
@@ -145,7 +126,7 @@ class SubtaskStorage(Storage):
         with open(self.data_file, 'r') as f:
             reader = csv.reader(f)
             for row in reader:
-                subtask = row_2_subtask(row)
+                subtask = Subtask.from_row(row)
                 subtasks.append(subtask)
         return subtasks
 
@@ -154,7 +135,7 @@ class SubtaskStorage(Storage):
         with open(self.data_file, 'w') as f:
             writer = csv.writer(f)
             for event in events:
-                writer.writerow(subtask_2_row(event))
+                writer.writerow(event.to_row())
         
     def add_event(self, event: Subtask):
         """Append a single event to the daily file"""
@@ -165,5 +146,5 @@ class SubtaskStorage(Storage):
                 return
         with open(self.data_file, 'a') as f:
             writer = csv.writer(f)
-            writer.writerow(subtask_2_row(event))
+            writer.writerow(event.to_row())
    

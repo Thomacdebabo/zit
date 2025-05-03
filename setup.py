@@ -13,6 +13,7 @@ setup(
             'zit=zit.cli:cli',
             'zit-fm=zit.filemanager_cli:fm',
             'zit-git=zit.git_cli:git_cli',
+            'zit-sys=zit.sys_cli:sys_cli',
         ],
     },
 ) 

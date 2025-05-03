@@ -25,3 +25,9 @@ def verify_no_default_project(events):
             return False
     return True
 
+def verify_max_time(events):
+    """Verify that the total time is less than 24 hours"""
+    total_time = 0
+    for event in events:
+        total_time += event.timestamp
+    return total_time < 24 * 60 * 60

@@ -25,6 +25,13 @@ def parse_time(time):
     event_time = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
     return event_time
 
+def pick_event(events):
+    print_events_with_index(events)
+    index = prompt_for_index()
+    if index < 0 or index >= len(events):
+        print_string("Invalid index. Operation aborted.")
+        return None
+    return events[index]
 @click.group()
 def cli():
     """Zit - Zimple Interval Tracker: A minimal time tracking CLI tool"""
@@ -235,17 +242,18 @@ def attach(subtask, note):
     storage = Storage()
     sub_storage = SubtaskStorage()
     events = storage.get_events()
+
     if len(events) == 0:
         print_string("No events found. Operation aborted.")
         return
-    print_events_with_index(events)
-    index = click.prompt("Enter the index of the event to attach", type=int)
-    if index < 0 or index >= len(events):
-        print_string("Invalid index. Operation aborted.")
-        return
-    event = events[index]
-    sub_storage.add_event(Subtask(timestamp=event.timestamp, name=subtask, note=note))
-    print_string(f"Subtask {subtask} attached to {event.name}")
+    
+    event = pick_event(events)
+
+    if event is not None:
+        sub_storage.add_event(Subtask(timestamp=event.timestamp, name=subtask, note=note))
+        print_string(f"Subtask {subtask} attached to {event.name}")
+    else:
+        print_string("Operation aborted.")
     
 @cli.command()
 def current():
@@ -270,19 +278,24 @@ def list(verbosity, pick):
         for i, f in enumerate(files):
             print_string(f"[{i}] {f.stem}")  
 
-        date = click.prompt("Enter the index of the date to list", type=int)
+        index = prompt_for_index()
 
-        if date < 0 or date >= len(files):
+        if index < 0 or index >= len(files):
             print_string("Invalid index. Operation aborted.")
             return
-        storage = Storage(files[date].stem)
-        sub_storage = SubtaskStorage(files[date].stem)
+        
+        storage = Storage(files[index].stem)
+        sub_storage = SubtaskStorage(files[index].stem)
     else:
         sub_storage = SubtaskStorage()
         storage = Storage()
 
     events = storage.get_events()
     sub_events = sub_storage.get_events()
+
+    if len(events) == 0:
+        print_string("No events found.")
+        return
     project_times, sum, excluded = calculate_project_times(events, exclude_projects=storage.exclude_projects)
     print_events_and_subtasks(events, sub_events, project_times, VerbosityLevel(verbosity))
     print_total_time(sum, excluded)
@@ -298,12 +311,10 @@ def note(note, pick):
         print_string("No current task. Operation aborted.")
         return
     if pick:
-        print_events_with_index(events)
-        index = click.prompt("Enter the index of the event to add a note to", type=int)
-        if index < 0 or index >= len(events):
-            print_string("Invalid index. Operation aborted.")
+        event = pick_event(events)
+        if event is None:
+            print_string("Operation aborted.")
             return
-        event = events[index]
     else:
         event = events[-1]
 

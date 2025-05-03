@@ -1,12 +1,33 @@
 from datetime import datetime
 from pydantic import BaseModel
 from .calculate import *
+
+def load_date(date):
+    return datetime.fromisoformat(date)
+
 class Project(BaseModel):
     timestamp: datetime
     name: str
 
+    def from_row(row):
+        timestamp = load_date(row[0])
+        return Project(timestamp=timestamp, name=row[1])
+    
+    def to_row(self):
+        return [self.timestamp, self.name]
+
 class Subtask(Project):
     note: str
+
+    def from_row(row):
+        timestamp = load_date(row[0])
+        if len(row) == 3:   
+            return Subtask(timestamp=timestamp, name=row[1], note=row[2])
+        else:
+            return Subtask(timestamp=timestamp, name=row[1], note="")
+    
+    def to_row(self):
+        return [self.timestamp, self.name, self.note]
 
 class GitCommit(BaseModel):
     timestamp: datetime
