@@ -83,12 +83,7 @@ def print_events(events, event_type=None):
         print_string("No matching events found.")
         return
         
-    last_hour = None
     for event in filtered_events:
-        hour = event.timestamp.hour
-        if hour != last_hour:
-            print_string(f"\n--- {event.timestamp.strftime('%H:00')} ---")
-            last_hour = hour
             
         details = f" ({event.details})" if event.details else ""
         print_string(f"{event.timestamp.strftime('%H:%M:%S')} - {event.event_type}{details}")
