@@ -24,54 +24,57 @@ def get_current_user():
     """Get the current user name"""
     return getpass.getuser()
 
-@sys_cli.command("track")
-@click.argument('event_type', type=click.Choice([e.value for e in SystemEventType]))
-@click.option('--details', '-d', default="", help='Additional details about the event')
-@click.option('--user', '-u', default=get_current_user(), help='User who triggered the event')
-def track_event(event_type, details, user):
-    """Manually track a system event"""
-    event = SystemEvent(
-        timestamp=datetime.now(),
-        event_type=event_type,
-        details=details,
-        user=user
-    )
+# @sys_cli.command("track")
+# @click.argument('event_type', type=click.Choice([e.value for e in SystemEventType]))
+# @click.option('--details', '-d', default="", help='Additional details about the event')
+# @click.option('--user', '-u', default=get_current_user(), help='User who triggered the event')
+# def track_event(event_type, details, user):
+#     """Manually track a system event"""
+#     event = SystemEvent(
+#         timestamp=datetime.now(),
+#         event_type=event_type,
+#         details=details,
+#         user=user
+#     )
     
-    storage = SystemStorage()
-    storage.add_event(event)
+#     storage = SystemStorage()
+#     storage.add_event(event)
     
-    print_string(f"Tracked {event_type} event: {details}")
+#     print_string(f"Tracked {event_type} event: {details}")
 
 @sys_cli.command("list")
 @click.option('--date', '-d', default=datetime.now().strftime('%Y-%m-%d'), 
               help='List events for a specific date (format: YYYY-MM-DD)')
 @click.option('--all', '-a', is_flag=True, help='List events for all dates')
-@click.option('--type', '-t', help='Filter by event type')
-def list_events(date, all, type):
+@click.option('--n', '-n', type=int, help='List events for the last n days')
+def list_events(date, all, n):
     """List system events"""
     if all:
         dates = SystemStorage.get_all_dates()
-        if not dates:
-            print_string("No system events found.")
+    elif n:
+        dates = SystemStorage.get_all_dates()[-n:]
+    elif date:
+        try:
+            datetime.strptime(date, '%Y-%m-%d')
+        except ValueError:
+            print_string(f"Invalid date format. Please use YYYY-MM-DD")
             return
-            
-        for date_str in dates:
-            storage = SystemStorage(date_str)
-            events = storage.get_events()
-            
-            if events:
-                print_string(f"\n--- System Events for {date_str} ---")
-                print_events(events, type)
+        dates = [date]
     else:
-        storage = SystemStorage(date)
+        dates = [datetime.now().strftime('%Y-%m-%d')]
+        
+    if not dates:
+        print_string("No system events found.")
+        return
+            
+    for date_str in dates:
+        storage = SystemStorage(date_str)
         events = storage.get_events()
         
-        if not events:
-            print_string(f"No system events found for {date}.")
-            return
-        
-        print_string(f"\nSystem Events for {date}:")
-        print_events(events, type)
+        if events:
+            print_string(f"\n--- System Events for {date_str} ---")
+            print_events(events)
+
 
 def print_events(events, event_type=None):
     """Print events with optional type filtering"""
@@ -88,74 +91,65 @@ def print_events(events, event_type=None):
         details = f" ({event.details})" if event.details else ""
         print_string(f"{event.timestamp.strftime('%H:%M:%S')} - {event.event_type}{details}")
 
-@sys_cli.command("startup")
-def track_startup():
-    """Track system startup"""
-    track_event.callback(event_type=SystemEventType.STARTUP.value, details="System started", user=get_current_user())
+# @sys_cli.command("startup")
+# def track_startup():
+#     """Track system startup"""
+#     track_event.callback(event_type=SystemEventType.STARTUP.value, details="System started", user=get_current_user())
 
-@sys_cli.command("app")
-@click.argument('app_name')
-@click.option('--action', '-a', type=click.Choice(['launch', 'close']), default='launch',
-              help='App action (launch or close)')
-def track_app(app_name, action):
-    """Track application launch or close"""
-    event_type = SystemEventType.APP_LAUNCH if action == 'launch' else SystemEventType.APP_CLOSE
-    track_event.callback(event_type=event_type.value, details=app_name, user=get_current_user())
+# @sys_cli.command("app")
+# @click.argument('app_name')
+# @click.option('--action', '-a', type=click.Choice(['launch', 'close']), default='launch',
+#               help='App action (launch or close)')
+# def track_app(app_name, action):
+#     """Track application launch or close"""
+#     event_type = SystemEventType.APP_LAUNCH if action == 'launch' else SystemEventType.APP_CLOSE
+#     track_event.callback(event_type=event_type.value, details=app_name, user=get_current_user())
 
-@sys_cli.command("monitor")
-@click.option('--apps', '-a', multiple=True, help='Applications to monitor (e.g. firefox, vscode)')
-@click.option('--interval', '-i', type=int, default=30, help='Check interval in seconds')
-def monitor_system(apps, interval):
-    """Monitor system for events (startup, sleep, application launches)"""
-    print_string("Starting system event monitoring...")
+# @sys_cli.command("monitor")
+# @click.option('--apps', '-a', multiple=True, help='Applications to monitor (e.g. firefox, vscode)')
+# @click.option('--interval', '-i', type=int, default=30, help='Check interval in seconds')
+# def monitor_system(apps, interval):
+#     """Monitor system for events (startup, sleep, application launches)"""
+#     print_string("Starting system event monitoring...")
     
-    system = platform.system()
+#     system = platform.system()
     
-    if system == "Linux":
-        try:
-            # First check if we have psutil installed
-            import psutil
-            from .linux_monitor import monitor
+#     if system == "Linux":
+#         try:
+#             # First check if we have psutil installed
+#             import psutil
+#             from .linux_monitor import monitor
             
-            # Use our Linux-specific monitor
-            monitor(interval=interval, apps=apps)
-            return
-        except ImportError:
-            print_string("The 'psutil' package is required for Linux monitoring.")
-            print_string("Install it with: pip install psutil")
-            return
-    elif system == "Darwin":  # macOS
-        print_string("macOS system monitoring is not yet implemented.")
-        print_string("You can manually track events using the 'track' command.")
-    elif system == "Windows":
-        print_string("Windows system monitoring is not yet implemented.")
-        print_string("You can manually track events using the 'track' command.")
-    else:
-        print_string(f"Unsupported system: {system}")
-        return
+#             # Use our Linux-specific monitor
+#             monitor(interval=interval, apps=apps)
+#             return
+#         except ImportError:
+#             print_string("The 'psutil' package is required for Linux monitoring.")
+#             print_string("Install it with: pip install psutil")
+#             return
+#     elif system == "Darwin":  # macOS
+#         print_string("macOS system monitoring is not yet implemented.")
+#         print_string("You can manually track events using the 'track' command.")
+#     elif system == "Windows":
+#         print_string("Windows system monitoring is not yet implemented.")
+#         print_string("You can manually track events using the 'track' command.")
+#     else:
+#         print_string(f"Unsupported system: {system}")
+#         return
 
 @sys_cli.command("import")
-@click.option('--start-date', help='Start date for log parsing (format: YYYY-MM-DD)')
-@click.option('--end-date', help='End date for log parsing (format: YYYY-MM-DD)')
-def parse_logs(start_date, end_date):
+#@click.option('--start-date', help='Start date for log parsing (format: YYYY-MM-DD)')
+#@click.option('--end-date', help='End date for log parsing (format: YYYY-MM-DD)')
+@click.option('--n', '-n', type=int, help='Import events from the last n days')
+
+def parse_logs(n):
     """Parse system logs to extract events like startup and sleep/wake"""
     
     # Validate date formats if provided
-    if not start_date:
-        start_date = datetime.strptime((datetime.now()).strftime('%Y-%m-%d'), '%Y-%m-%d')
-    else:
-        try:
-            datetime.strptime(start_date, '%Y-%m-%d')
-        except ValueError:
-            print_string("Invalid start date format. Use YYYY-MM-DD.")
-            return
-    if end_date:
-        try:
-            datetime.strptime(end_date, '%Y-%m-%d')
-        except ValueError:
-            print_string("Invalid end date format. Use YYYY-MM-DD.")
-            return
-            
+    if not n:
+        n = 1
+    start_date = datetime.now() - timedelta(days=n)
+    end_date = datetime.now() + timedelta(days=1)
     events = extract_events_from_logs(start_date, end_date)
     
     if not events:

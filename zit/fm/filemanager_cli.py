@@ -20,27 +20,27 @@ def parse_date(date_str: str) -> datetime | None:
     except ValueError:
         return None
 
-def print_files(files):
+def print_files(files, verbose=False):
     total_sum = 0
     for i, file in enumerate(files) :
-        print_string(f"[{i}] {file.stem}")
+        
         # Get the events for this file
         storage = Storage(file.stem)
         events = storage.get_events()
-
         if events:
-            # Group events by project
-            project_times, sum, excluded = calculate_project_times(events)
-            
-            # Print project times for this day
-            if project_times:
+            project_times, sum, excluded = calculate_project_times(events, exclude_projects=storage.exclude_projects, add_ongoing=False)
+            print_string(f"[{i}] {file.stem}            Total: {total_seconds_2_hms(sum)}")
+
+            for exclude_project in storage.exclude_projects:
+                project_times.pop(exclude_project, None)
+
+            if project_times and verbose:
                 for project, duration in sorted(project_times.items()):
                     hms = total_seconds_2_hms(duration)
                     is_last = project == sorted(project_times.keys())[-1]
                     prefix = "    └── " if is_last else "    ├── "
                     print_string(f"{prefix}{project}: {hms}")
 
-        print_string(f"   Total: {total_seconds_2_hms(sum)}")
         total_sum += sum
     print_string("------")
     print_string(f"Total: {total_seconds_2_hms(total_sum)}")
@@ -50,20 +50,21 @@ def fm():
     pass
 
 @fm.command(name='list') # New command list-all
-@click.option('--all', '-a', is_flag=True, help='Show all files')   
-def list_all_files(all):
+@click.option('--n', '-n', type=int, help='Show last n files')   
+@click.option('--verbose', '-v', is_flag=True, help='Show verbose output')
+def list_all_files(n, verbose):
     """List all available data files."""
     manager = ZitFileManager()
-    if all:
-        files = sorted(manager.get_all_dates())
+    if n:
+        files = sorted(manager.get_all_dates())[-n:]
     else:
-        files = sorted(manager.get_all_dates())[-10:]
+        files = sorted(manager.get_all_dates())
     if not files:
         print_string("No data files found.")
         return
     
     print_string("Available data files:")
-    print_files(files)
+    print_files(files, verbose)
 
 @fm.command(name='remove')
 def remove_file():
@@ -94,15 +95,15 @@ def remove_file():
             sys.exit(1)
 
 @fm.command(name='status')
-@click.option('--all', '-a', is_flag=True, help='Show all projects')
-
-def status(all):
+@click.option('--verbose', '-v', is_flag=True, help='Show verbose output')
+@click.option('--n', '-n', type=int, help='Show last n dates')
+def status(verbose, n):
     """Show total time spent on each project within a date range."""
     manager = ZitFileManager()
-    if all:
-        dates = manager.get_all_dates()
+    if n:
+        dates = manager.get_all_dates()[-n:]
     else:
-        dates = manager.get_all_dates()[-10:]
+        dates = manager.get_all_dates()
 
     project_times = {}
     for date in dates:
@@ -116,33 +117,34 @@ def status(all):
             project_times.pop(exclude_project, None)
     print_project_times(project_times)
 
-@fm.command(name='lprojects')
-def lprojects():
-    """List all projects in all files."""
-    manager = ZitFileManager()
-    files = sorted(manager.get_all_dates())
-    all_projects = set()
+
+# @fm.command(name='lprojects')
+# def lprojects():
+#     """List all projects in all files."""
+#     manager = ZitFileManager()
+#     files = sorted(manager.get_all_dates())
+#     all_projects = set()
     
-    for file in files:
-        print_string(f"[{file.stem}]")
-        storage = Storage(file.stem)
-        sub_storage = SubtaskStorage(file.stem)
-        events = storage.get_events()
+#     for file in files:
+#         print_string(f"[{file.stem}]")
+#         storage = Storage(file.stem)
+#         sub_storage = SubtaskStorage(file.stem)
+#         events = storage.get_events()
         
-        sub_events = sub_storage.get_events()
-        all_events = sort_events(events, sub_events)
-        subtask_dict = create_subtask_dict(all_events)
+#         sub_events = sub_storage.get_events()
+#         all_events = sort_events(events, sub_events)
+#         subtask_dict = create_subtask_dict(all_events)
 
-        for project, subtasks in subtask_dict.items():
-            if project in storage.exclude_projects:
-                continue
-            print_string(f"{project}:")
-            for subtask in subtasks:
-                print_string(f"  {subtask.name}")
+#         for project, subtasks in subtask_dict.items():
+#             if project in storage.exclude_projects:
+#                 continue
+#             print_string(f"{project}:")
+#             for subtask in subtasks:
+#                 print_string(f"  {subtask.name}")
 
-    for project in sorted(all_projects):
-        if project not in storage.exclude_projects:
-            print_string(project)
+#     for project in sorted(all_projects):
+#         if project not in storage.exclude_projects:
+#             print_string(project)
 
 
 

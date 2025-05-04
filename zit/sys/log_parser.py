@@ -230,7 +230,7 @@ def get_sleep_wake_events(start_date=None):
     events = []
     try:
         cmd = [
-            "journalctl", f"--since=today", "-o", "json", "-u", "sleep.target"
+            "journalctl", f"--since={start_date}", "-o", "json", "-u", "sleep.target"
         ]
         output = subprocess.check_output(cmd, text=True)
         

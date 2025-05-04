@@ -73,14 +73,22 @@ mv ./dist/zit-git ~/.local/bin
 - [x] import timestamps from git
 - [x] import timestamps from system
 
+## zit-fm
+- [ ] add options to change and fix old entries
+- [ ] improve printing and verbosity
 ## zit-git
 - [x] installer
 - [ ] better printing
 - [ ] figure out which features are needed
 - [ ] integrate with subtasks
+- [ ] handling multiple days
 
 ## zit-sys
 - [x] installer
+- [ ] check if we get all sys events
+- [ ] add more events
+- [ ] improve cli
+- [ ] handling multiple days
 
 
 

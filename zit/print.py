@@ -121,7 +121,8 @@ def print_events_with_index(events):
     for i, event in enumerate(events):
         print_string(f"{i}: {event.name} - {time_2_str(event.timestamp)}")
 
-def print_project_times(project_times):
+def print_project_times(project_times, verbose=False):
+    #TODO if verbose also print subtask times
     pretty_print_title("Time per project:")
     for project, total_time in sorted(project_times.items(), key=lambda item: item[1], reverse=True):
         string = f"{project}".ljust(DEFAULT_MAX_WIDTH-8) + f"{total_seconds_2_hms(total_time)}"
