@@ -109,8 +109,11 @@ def status(all):
         storage = Storage(date.stem)
         events = storage.get_events()
         if events:
-            pt,_,_ = calculate_project_times(events)
+            pt,_,_ = calculate_project_times(events, exclude_projects=storage.exclude_projects, add_ongoing=False)
+
             project_times = add_project_times(project_times, pt)
+        for exclude_project in storage.exclude_projects:
+            project_times.pop(exclude_project, None)
     print_project_times(project_times)
 
 @fm.command(name='lprojects')
