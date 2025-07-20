@@ -121,7 +121,7 @@ def add(project, time, subtask, note, yesterday, date):
     try:
         event_time = parse_time(time) 
     except ValueError as e:
-        print_string(f"Error: {str(e)}", err=True)
+        print_string(f"Error: {str(e)}")
         return
     # Create a datetime object for today with the specified time
 
