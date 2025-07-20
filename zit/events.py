@@ -10,6 +10,7 @@ class Project(BaseModel):
     name: str
 
     def from_row(row):
+        row = [item.strip() for item in row]
         timestamp = load_date(row[0])
         return Project(timestamp=timestamp, name=row[1])
     
@@ -20,6 +21,7 @@ class Subtask(Project):
     note: str
 
     def from_row(row):
+        row = [item.strip() for item in row]
         timestamp = load_date(row[0])
         if len(row) == 3:   
             return Subtask(timestamp=timestamp, name=row[1], note=row[2])

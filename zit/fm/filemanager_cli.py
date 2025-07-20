@@ -13,6 +13,7 @@ from ..storage import Storage, SubtaskStorage, Project, Subtask
 from ..calculate import calculate_project_times, add_project_times
 from ..events import sort_events, create_subtask_dict
 from .filemanager import ZitFileManager
+from ..verify import verify_all
 def parse_date(date_str: str) -> datetime | None:
     """Helper function to parse YYYY-MM-DD date strings."""
     try:
@@ -29,7 +30,9 @@ def print_files(files, verbose=False):
         events = storage.get_events()
         if events:
             project_times, sum, excluded = calculate_project_times(events, exclude_projects=storage.exclude_projects, add_ongoing=False)
-            print_string(f"[{i}] {file.stem}            Total: {total_seconds_2_hms(sum)}")
+            verified = verify_all(events)
+            mark = "✔" if verified else "✗"
+            print_string(f"[{i}] {file.stem}            Total: {total_seconds_2_hms(sum)} | {mark}")
 
             for exclude_project in storage.exclude_projects:
                 project_times.pop(exclude_project, None)

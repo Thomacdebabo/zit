@@ -31,3 +31,11 @@ def verify_max_time(events):
     for event in events:
         total_time += event.timestamp
     return total_time < 24 * 60 * 60
+
+def verify_all(events):
+    """Verify that the events list is valid"""
+    verified = True
+    verified &= verify_no_default_project(events)
+    verified &= verify_lunch(events)
+    verified &= verify_stop(events)
+    return verified

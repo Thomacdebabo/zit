@@ -11,6 +11,12 @@ from .print import *
 from .verify import *
 from .fm.filemanager import ZitFileManager
 
+def verify_date(date):
+    try:
+        datetime.strptime(date, '%Y-%m-%d')
+    except ValueError:
+        raise ValueError("Invalid date format. Please use YYYY-MM-DD format.")
+
 def parse_time(time):
             # Parse the time format (HHMM)
     if len(time) != 4 or not time.isdigit():
@@ -73,22 +79,26 @@ def lunch(time):
     storage.add_event(Project(timestamp=event_time, name="LUNCH"))
 
 @cli.command()
-@click.option('--yesterday', is_flag=True, help='Show status for yesterday')
-def status(yesterday):
+@click.option('--yesterday', '-y', is_flag=True, help='Show status for yesterday')
+@click.option('--date', '-d', default=None, help='Show status for a specific date (format: YYYY-MM-DD)')
+def status(yesterday, date):
     """Show current tracking status"""
     storage = Storage()
     
     if yesterday:
         storage.set_to_yesterday()
+    elif date:
+        verify_date(date)
+        storage.set_to_date(date)
     
     events = storage.get_events()
     
+    day = "yesterday" if yesterday else date if date else "today"
     if not events:
-        day = "yesterday" if yesterday else "today"
         print_string(f"No events found for {day}.")
         return
     
-    pretty_print_title("Current status...")
+    pretty_print_title(f"Status for {day}...")
     print_intervals(events)
     print_ongoing_interval(events[-1])
 
@@ -103,7 +113,9 @@ def status(yesterday):
 @click.argument('time', metavar='TIME (format: HHMM)')
 @click.option('--subtask', '--sub', '-s', is_flag=True, help='Add a subtask')
 @click.option('--note', '-n', default="", help='Add a note to the project')
-def add(project, time, subtask, note):
+@click.option('--yesterday', '-y', is_flag=True, help='Add the event for yesterday')
+@click.option('--date', '-d', default=None, help='Add the event for a specific date (format: YYYY-MM-DD)')
+def add(project, time, subtask, note, yesterday, date):
     """Add a project with a specific time (format: HHMM, e.g. 1200 for noon)
     Use --subtask (or --sub, -s) flag to add a subtask instead of a main project"""
     try:
@@ -114,6 +126,13 @@ def add(project, time, subtask, note):
     # Create a datetime object for today with the specified time
 
     storage = Storage()
+
+    if yesterday:
+        storage.set_to_yesterday()
+    elif date:
+        verify_date(date)
+        storage.set_to_date(date)
+
     if subtask:
         if storage.get_project_at_time(event_time) is None:
             print_string("No current task. No subtask added.")
@@ -147,9 +166,18 @@ def clean():
     print_string("Data has been cleaned.")
 
 @cli.command()
-def verify():
+@click.option('--yesterday', '-y', is_flag=True, help='Verify the data for yesterday')
+@click.option('--date', '-d', default=None, help='Verify the data for a specific date (format: YYYY-MM-DD)')
+def verify(yesterday, date):
     """Verify the data"""
     storage = Storage()
+
+    if yesterday:
+        storage.set_to_yesterday()
+    elif date:
+        verify_date(date)
+        storage.set_to_date(date)
+
     events = storage.get_events()
     if verify_lunch(events):
         print_string("✓ LUNCH event found")
@@ -166,6 +194,13 @@ def verify():
 
     sub_storage = SubtaskStorage()
     sub_events = sub_storage.get_events()  
+
+    if yesterday:
+        sub_storage.set_to_yesterday()
+    elif date:
+        verify_date(date)
+        sub_storage.set_to_date(date)
+
     if verify_no_default_project(sub_events):
         print_string("✓ no DEFAULT subtasks found")
     else:
@@ -173,12 +208,21 @@ def verify():
 
 @cli.command()
 @click.option('--subtask', '--sub', '-s', is_flag=True, help='Remove a subtask instead of a main project')
-def remove(subtask):
+@click.option('--yesterday', '-y', is_flag=True, help='Remove the event for yesterday')
+@click.option('--date', '-d', default=None, help='Remove the event for a specific date (format: YYYY-MM-DD)')
+def remove(subtask, yesterday, date):
     """Remove the last event"""
     if subtask:
         storage = SubtaskStorage()
     else:
         storage = Storage()
+
+    if yesterday:
+        storage.set_to_yesterday()
+    elif date:
+        verify_date(date)
+        storage.set_to_date(date)
+
     events = storage.get_events()
     if len(events) == 0:
         print_string("No events found. Operation aborted.")
@@ -194,12 +238,20 @@ def remove(subtask):
 
 @cli.command()
 @click.option('--subtask', '--sub', '-s', is_flag=True, help='Change a subtask instead of a main project')
-def change(subtask):
+@click.option('--yesterday', '-y', is_flag=True, help='Change the event for yesterday')
+@click.option('--date', '-d', default=None, help='Change the event for a specific date (format: YYYY-MM-DD)')
+def change(subtask, yesterday, date):
     """Change an event"""
     if subtask:
         storage = SubtaskStorage()
     else:
         storage = Storage()
+
+    if yesterday:
+        storage.set_to_yesterday()
+    elif date:
+        verify_date(date)
+        storage.set_to_date(date)
 
     events = storage.get_events()
     if len(events) == 0:

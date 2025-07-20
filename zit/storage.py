@@ -32,9 +32,9 @@ class Storage:
         with open(self.data_file, 'r') as f:
             reader = csv.reader(f)
             for row in reader:
-                project = Project.from_row(row)
-                projects.append(project)
-
+                if row:  # Only process non-empty rows
+                    project = Project.from_row(row)
+                    projects.append(project)
 
         return self._sort_events(projects)
 
@@ -84,9 +84,13 @@ class Storage:
     def clean_storage(self):
         self._clean_file()
 
-    def set_to_yesterday(self):
-        self.current_date = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
+    def set_to_date(self, date: str):
+        self.current_date = date
         self.data_file = self.data_dir / f'{self.current_date}.csv'
+
+    def set_to_yesterday(self):
+        yesterday = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
+        self.set_to_date(yesterday)
 
     def remove_data_file(self):
         self._ensure_data_dir()
