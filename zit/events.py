@@ -1,11 +1,75 @@
 from datetime import datetime
+from tkinter import E
 from pydantic import BaseModel
 from .calculate import *
-
+import csv
+from pathlib import Path
 def load_date(date):
     return datetime.fromisoformat(date)
+from abc import ABC, abstractmethod
 
-class Project(BaseModel):
+
+class Event(BaseModel, ABC):
+    timestamp: datetime
+
+    @abstractmethod
+    def from_row(row):
+        pass
+    
+    @abstractmethod
+    def to_row(self):
+        pass
+
+
+class DataStorage(BaseModel):
+    events: list[Event]
+
+    def __init__(self, events: list[Event]):
+        super().__init__(events=events)
+
+    @classmethod
+    def from_csv(cls, csv_file: Path, event_type: type[Event]):
+        events = []
+        if csv_file.exists():
+            with open(csv_file, 'r') as f:
+                reader = csv.reader(f)
+                for row in reader:
+                    events.append(event_type.from_row(row))
+            events.sort(key=lambda x: x.timestamp)
+        return cls(events)
+
+    def to_csv(self, csv_file):
+        with open(csv_file, 'w') as f:
+            writer = csv.writer(f)
+            for event in self.events:
+                writer.writerow(event.to_row())
+
+    def sort(self):
+        self.events.sort(key=lambda x: x.timestamp)
+
+    def combine_events(self):
+        combined_events = []
+        for event in self.events:
+            if combined_events:
+                if combined_events[-1].name == event.name:
+                    continue
+            combined_events.append(event)
+        self.events = combined_events
+
+    def __iter__(self):
+        return iter(self.events)
+    
+    def __len__(self):
+        return len(self.events)
+
+    def __getitem__(self, index):
+        return self.events[index]
+
+    def add_item(self, event):
+        self.events.append(event)
+        self.sort()
+
+class Project(Event):
     timestamp: datetime
     name: str
 
@@ -14,10 +78,14 @@ class Project(BaseModel):
         timestamp = load_date(row[0])
         return Project(timestamp=timestamp, name=row[1])
     
+
     def to_row(self):
         return [self.timestamp, self.name]
 
-class Subtask(Project):
+
+class Subtask(Event):
+    timestamp: datetime
+    name: str
     note: str
 
     def from_row(row):
@@ -32,7 +100,6 @@ class Subtask(Project):
         return [self.timestamp, self.name, self.note]
 
 class GitCommit(BaseModel):
-    timestamp: datetime
     hash: str
     message: str
     author: str
