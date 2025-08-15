@@ -262,17 +262,17 @@ def remove(subtask, yesterday, date):
         verify_date(date)
         storage.set_to_date(date)
 
-    events = storage.get_events()
-    if len(events) == 0:
+    data_storage = storage._read_events()
+    if len(data_storage) == 0:
         print_string("No events found. Operation aborted.")
         return
-    print_events_with_index(events)
+    print_events_with_index(data_storage.events)
     index = prompt_for_index()
-    if index < 0 or index >= len(events):
+    if index < 0 or index >= len(data_storage):
         print_string("Invalid index. Operation aborted.")
         return
-    events.pop(index)
-    storage._write_events(events)
+    data_storage.remove_item(index)
+    storage._write_events(data_storage)
     print_string("Event has been removed.")
 
 

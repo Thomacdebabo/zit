@@ -68,6 +68,9 @@ class DataStorage(BaseModel):
 
     def __getitem__(self, index):
         return self.events[index]
+    
+    def remove_item(self, index):
+        self.events.pop(index)
 
     def __setitem__(self, index, value):
         self.events[index] = value
