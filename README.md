@@ -5,11 +5,11 @@
 
 # Quickstart
 Install:
-```
+```console
 curl -sSL https://raw.githubusercontent.com/Thomacdebabo/zit/main/scripts/install.sh | bash
 ```
 Simple use case:
-```
+```console
 # start timetracking in the morning maybe you do not know yet what you will be working on so we just do this:
 zit start # will start DEFAULT project, you can also give it a project name if you know already...
 
