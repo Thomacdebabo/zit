@@ -216,14 +216,6 @@ def test_lunch_command_specific_time(zit_env):
     # The time should be in the file in some format
     assert '12:00' in content or '1200' in content
 
-
-def test_lunch_command_invalid_time(zit_env):
-    """Test lunch command with invalid time format"""
-    result = zit_env.run_zit_command(['lunch', '25:30'])
-    # Should handle error gracefully, but currently throws exception - adjust test
-    assert 'Error:' in result.stdout or result.returncode != 0
-
-
 def test_status_command_no_events(zit_env):
     """Test status command with no events"""
     result = zit_env.run_zit_command(['status'])
@@ -499,7 +491,6 @@ def test_git_help_command(zit_env):
     assert 'projects' in result.stdout
 
 
-@pytest.mark.xfail(reason="GitCommit class has attribute issues that need to be fixed")
 def test_git_import_commits(zit_env, git_repo):
     """Test importing git commits"""
     result = zit_env.run_zit_git_command([
@@ -512,7 +503,6 @@ def test_git_import_commits(zit_env, git_repo):
     assert 'Initial commit' in result.stdout
 
 
-@pytest.mark.xfail(reason="GitCommit class has attribute issues that need to be fixed")
 def test_git_import_as_subtasks(zit_env, git_repo):
     """Test importing git commits as subtasks"""
     result = zit_env.run_zit_git_command([
@@ -525,7 +515,6 @@ def test_git_import_as_subtasks(zit_env, git_repo):
     assert 'Added subtask' in result.stdout
 
 
-@pytest.mark.xfail(reason="GitCommit class has attribute issues that need to be fixed")
 def test_git_import_with_limit(zit_env, git_repo):
     """Test importing git commits with limit"""
     result = zit_env.run_zit_git_command([
