@@ -84,6 +84,7 @@ class Project(Event):
     timestamp: datetime
     name: str
 
+    @staticmethod
     def from_row(row):
         row = [item.strip() for item in row]
         timestamp = load_date(row[0])
@@ -98,6 +99,7 @@ class Subtask(Event):
     name: str
     note: str
 
+    @staticmethod
     def from_row(row):
         row = [item.strip() for item in row]
         timestamp = load_date(row[0])
@@ -110,12 +112,14 @@ class Subtask(Event):
         return [self.timestamp, self.name, self.note]
 
 
-class GitCommit(BaseModel):
+class GitCommit(Event):
+    timestamp: datetime
     hash: str
     message: str
     author: str
     email: str
 
+    @staticmethod
     def from_row(row):
         timestamp = load_date(row[0])
         return GitCommit(
