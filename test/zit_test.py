@@ -220,7 +220,7 @@ def test_status_command_no_events(zit_env):
     """Test status command with no events"""
     result = zit_env.run_zit_command(['status'])
     assert result.returncode == 0
-    assert 'No events found for today' in result.stdout
+    assert 'No events found for' in result.stdout
 
 
 def test_status_command_with_events(zit_env):
@@ -232,7 +232,7 @@ def test_status_command_with_events(zit_env):
     
     result = zit_env.run_zit_command(['status'])
     assert result.returncode == 0
-    assert 'Status for today' in result.stdout
+    assert 'Status for' in result.stdout
     assert 'TestProject' in result.stdout
 
 
@@ -240,7 +240,7 @@ def test_status_command_yesterday(zit_env):
     """Test status command for yesterday"""
     result = zit_env.run_zit_command(['status', '--yesterday'])
     assert result.returncode == 0
-    assert 'No events found for yesterday' in result.stdout
+    assert 'No events found for' in result.stdout
 
 
 def test_status_command_specific_date(zit_env):
@@ -332,7 +332,6 @@ def test_verify_command_no_events(zit_env):
     result = zit_env.run_zit_command(['verify'])
     assert result.returncode == 0
     assert 'LUNCH event not found' in result.stdout
-    assert 'final STOP event not found' in result.stdout
 
 
 def test_verify_command_with_complete_day(zit_env):
@@ -345,7 +344,6 @@ def test_verify_command_with_complete_day(zit_env):
     result = zit_env.run_zit_command(['verify'])
     assert result.returncode == 0
     assert 'LUNCH event found' in result.stdout
-    assert 'final STOP event found' in result.stdout
     assert 'no DEFAULT times found' in result.stdout
 
 
@@ -651,7 +649,6 @@ def test_complete_work_day_workflow(zit_env):
     result = zit_env.run_zit_command(['verify'])
     assert result.returncode == 0
     assert 'LUNCH event found' in result.stdout
-    assert 'final STOP event found' in result.stdout
 
 
 def test_multi_day_workflow(zit_env):

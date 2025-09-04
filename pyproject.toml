@@ -9,3 +9,14 @@ dependencies = [
     "pydantic>=2.11.7",
     "pytest>=8.4.1",
 ]
+[project.scripts]
+zit = "zit.cli:cli"
+zit-fm = "zit.fm.filemanager_cli:fm"
+zit-git = "zit.git.git_cli:git_cli"
+zit-sys = "zit.sys.sys_cli:sys_cli"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
