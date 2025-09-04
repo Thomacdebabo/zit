@@ -3,6 +3,7 @@ from tkinter import E
 from pydantic import BaseModel
 import csv
 from pathlib import Path
+from zit.time_utils import interval_2_hms, time_2_str
 
 
 def load_date(date):
@@ -105,6 +106,9 @@ class ProjectInterval(Interval):
     @property
     def duration(self):
         return (self.end - self.start).total_seconds()
+
+    def __str__(self):
+        return f"{self.name} - {interval_2_hms(self.duration)} ( {time_2_str(self.start)} -> {time_2_str(self.end)})"
 
 
 class ProjectIntervalStorage(BaseModel):

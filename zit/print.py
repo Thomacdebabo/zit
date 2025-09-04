@@ -2,7 +2,7 @@ from .terminal import *
 from .calculate import calculate_interval, calculate_ongoing_interval
 from .events import *
 from enum import Enum, auto
-
+from zit.time_utils import interval_2_hms, time_2_str, total_seconds_2_hms
 DEFAULT_MAX_WIDTH = 70
 
 class VerbosityLevel(Enum):
@@ -10,21 +10,6 @@ class VerbosityLevel(Enum):
     SINGLE_LINE_NOTES = auto()
     FULL_NOTES = auto()
 
-
-def date_2_str(date):
-    return date.strftime('%Y-%m-%d')
-
-def time_2_str(time):
-    return f"{time.hour:02d}:{time.minute:02d}:{time.second:02d}"
-
-def interval_2_hms(interval):
-    return total_seconds_2_hms(interval.total_seconds())
-
-
-def total_seconds_2_hms(total_seconds):
-    hours, remainder = divmod(total_seconds, 3600)
-    minutes, seconds = divmod(remainder, 60)
-    return f'{int(hours):02d}:{int(minutes):02d}:{int(seconds):02d}'
 
 def split_line(text: str, max_length: int) -> list[str]:
     lines = []
