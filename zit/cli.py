@@ -3,7 +3,7 @@
 import click
 from .terminal import *
 from .storage import Storage, SubtaskStorage
-from datetime import datetime
+from datetime import datetime, timedelta
 from .storage import Project, Subtask
 
 from .calculate import *
@@ -17,7 +17,15 @@ def verify_date(date):
         datetime.strptime(date, "%Y-%m-%d")
     except ValueError:
         raise ValueError("Invalid date format. Please use YYYY-MM-DD format.")
-
+    
+def determine_date(yesterday, date):
+    if yesterday:
+        return (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
+    elif date:
+        verify_date(date)
+        return date
+    else:
+        return datetime.now().strftime('%Y-%m-%d')
 
 def parse_time(time):
     # Parse the time format (HHMM)
@@ -97,17 +105,10 @@ def lunch(time):
 )
 def status(yesterday, date):
     """Show current tracking status"""
-    storage = Storage()
-
-    if yesterday:
-        storage.set_to_yesterday()
-    elif date:
-        verify_date(date)
-        storage.set_to_date(date)
+    day = determine_date(yesterday, date)
+    storage = Storage(day)
 
     events = storage.get_events()
-
-    day = "yesterday" if yesterday else date if date else "today"
     if not events:
         print_string(f"No events found for {day}.")
         return
@@ -144,21 +145,15 @@ def add(project, time, subtask, note, yesterday, date):
     except ValueError as e:
         print_string(f"Error: {str(e)}")
         return
-    # Create a datetime object for today with the specified time
-
-    storage = Storage()
-
-    if yesterday:
-        storage.set_to_yesterday()
-    elif date:
-        verify_date(date)
-        storage.set_to_date(date)
+    
+    day = determine_date(yesterday, date)
+    storage = Storage(day)
 
     if subtask:
         if storage.get_project_at_time(event_time) is None:
             print_string("No current task. No subtask added.")
             return
-        sub_storage = SubtaskStorage()
+        sub_storage = SubtaskStorage(day)
         sub_storage.add_event(Subtask(timestamp=event_time, name=project, note=note))
         print_string(f"Added subtask: {project} at {event_time.strftime('%H:%M')}")
     else:
@@ -197,13 +192,8 @@ def clean():
 )
 def verify(yesterday, date):
     """Verify the data"""
-    storage = Storage()
-
-    if yesterday:
-        storage.set_to_yesterday()
-    elif date:
-        verify_date(date)
-        storage.set_to_date(date)
+    day = determine_date(yesterday, date)
+    storage = Storage(day)
 
     events = storage.get_events()
     if verify_lunch(events):
@@ -251,16 +241,11 @@ def verify(yesterday, date):
 )
 def remove(subtask, yesterday, date):
     """Remove the last event"""
+    day = determine_date(yesterday, date)
     if subtask:
-        storage = SubtaskStorage()
+        storage = SubtaskStorage(day)
     else:
-        storage = Storage()
-
-    if yesterday:
-        storage.set_to_yesterday()
-    elif date:
-        verify_date(date)
-        storage.set_to_date(date)
+        storage = Storage(day)
 
     data_storage = storage._read_events()
     if len(data_storage) == 0:
@@ -293,16 +278,13 @@ def remove(subtask, yesterday, date):
 )
 def change(subtask, yesterday, date):
     """Change an event"""
-    if subtask:
-        storage = SubtaskStorage()
-    else:
-        storage = Storage()
+    day = determine_date(yesterday, date)
 
-    if yesterday:
-        storage.set_to_yesterday()
-    elif date:
-        verify_date(date)
-        storage.set_to_date(date)
+    if subtask:
+        storage = SubtaskStorage(day)
+    else:
+        storage = Storage(day)
+
 
     data_storage = storage._read_events()
     if len(data_storage) == 0:
@@ -383,8 +365,15 @@ def current():
     default=2,
     help="Increase verbosity level (-v: none, -vv: single line, -vvv: full notes)",
 )
+@click.option("--yesterday", "-y", is_flag=True, help="Change the event for yesterday")
+@click.option(
+    "--date",
+    "-d",
+    default=None,
+    help="Change the event for a specific date (format: YYYY-MM-DD)",
+)
 @click.option("-p", "--pick", is_flag=True, help="Pick a date")
-def list(verbosity, pick):
+def list(verbosity, pick, yesterday, date):
     """List all subtasks"""
     if pick:
         zfm = ZitFileManager()
@@ -398,12 +387,12 @@ def list(verbosity, pick):
         if index < 0 or index >= len(files):
             print_string("Invalid index. Operation aborted.")
             return
-
-        storage = Storage(files[index].stem)
-        sub_storage = SubtaskStorage(files[index].stem)
+        day = files[index].stem
     else:
-        sub_storage = SubtaskStorage()
-        storage = Storage()
+        day = determine_date(yesterday, date)
+
+    sub_storage = SubtaskStorage(day)
+    storage = Storage(day)
 
     events = storage.get_events()
     sub_events = sub_storage.get_events()
@@ -411,13 +400,13 @@ def list(verbosity, pick):
     if len(events) == 0:
         print_string("No events found.")
         return
-    project_times, sum, excluded = calculate_project_times(
+    project_times, sum_prj, excluded = calculate_project_times(
         events, exclude_projects=storage.exclude_projects
     )
     print_events_and_subtasks(
         events, sub_events, project_times, VerbosityLevel(verbosity)
     )
-    print_total_time(sum, excluded)
+    print_total_time(sum_prj, excluded)
 
 
 @cli.command()
