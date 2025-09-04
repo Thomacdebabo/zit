@@ -1,5 +1,6 @@
 from datetime import datetime
 from zit.events import Event, Project, Subtask, ProjectInterval, ProjectIntervalStorage
+
 def calculate_interval(event1: Event, event2: Event):
     start_time = event1.timestamp
     end_time = event2.timestamp

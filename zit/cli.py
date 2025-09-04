@@ -117,12 +117,12 @@ def status(yesterday, date):
     print_intervals(events)
     print_ongoing_interval(events[-1])
 
-    project_times, sum, excluded = calculate_project_times(
+    project_times, time_sum, excluded = calculate_project_times(
         events, exclude_projects=storage.exclude_projects
     )
 
     print_project_times(project_times)
-    print_total_time(sum, excluded)
+    print_total_time(time_sum, excluded)
 
 
 @cli.command()
