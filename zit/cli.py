@@ -17,15 +17,17 @@ def verify_date(date):
         datetime.strptime(date, "%Y-%m-%d")
     except ValueError:
         raise ValueError("Invalid date format. Please use YYYY-MM-DD format.")
-    
+
+
 def determine_date(yesterday, date):
     if yesterday:
-        return (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
+        return (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
     elif date:
         verify_date(date)
         return date
     else:
-        return datetime.now().strftime('%Y-%m-%d')
+        return datetime.now().strftime("%Y-%m-%d")
+
 
 def parse_time(time):
     # Parse the time format (HHMM)
@@ -145,7 +147,7 @@ def add(project, time, subtask, note, yesterday, date):
     except ValueError as e:
         print_string(f"Error: {str(e)}")
         return
-    
+
     day = determine_date(yesterday, date)
     storage = Storage(day)
 
@@ -284,7 +286,6 @@ def change(subtask, yesterday, date):
         storage = SubtaskStorage(day)
     else:
         storage = Storage(day)
-
 
     data_storage = storage._read_events()
     if len(data_storage) == 0:

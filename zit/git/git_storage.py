@@ -8,19 +8,19 @@ import time
 from ..events import Project, Subtask, GitCommit
 
 # Define directory for git-specific data
-GIT_DATA_DIR = Path.home() / '.zit' / 'git'
-
+GIT_DATA_DIR = Path.home() / ".zit" / "git"
 
 
 class GitStorage:
-    def __init__(self, project_name='default', current_date=datetime.now().strftime('%Y-%m-%d')):
+    def __init__(
+        self, project_name="default", current_date=datetime.now().strftime("%Y-%m-%d")
+    ):
         self.project_name = project_name
         self.data_dir = GIT_DATA_DIR / self.project_name
-        self.trash_dir = self.data_dir / 'trash'
+        self.trash_dir = self.data_dir / "trash"
         self._ensure_data_dir()
         self.current_date = current_date
-        self.data_file = self.data_dir / f'{self.current_date}.csv'
-
+        self.data_file = self.data_dir / f"{self.current_date}.csv"
 
     def _ensure_data_dir(self):
         """Create data directory if it doesn't exist"""
@@ -33,7 +33,7 @@ class GitStorage:
             return []
 
         commits = []
-        with open(self.data_file, 'r') as f:
+        with open(self.data_file, "r") as f:
             reader = csv.reader(f)
             for row in reader:
                 commit = GitCommit.from_row(row)
@@ -60,7 +60,7 @@ class GitStorage:
 
     def _write_events(self, events: list[GitCommit]):
         """Write events to the daily file"""
-        with open(self.data_file, 'w') as f:
+        with open(self.data_file, "w") as f:
             writer = csv.writer(f)
             for event in events:
                 writer.writerow(event.to_row())
@@ -76,7 +76,7 @@ class GitStorage:
             if existing_event.timestamp == event.timestamp:
                 print(f"Event already exists at {event.timestamp}")
                 return
-        with open(self.data_file, 'a') as f:
+        with open(self.data_file, "a") as f:
             writer = csv.writer(f)
             writer.writerow(event.to_row())
 
@@ -88,12 +88,15 @@ class GitStorage:
         self._clean_file()
 
     def set_to_yesterday(self):
-        self.current_date = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
-        self.data_file = self.data_dir / f'{self.current_date}.csv'
+        self.current_date = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+        self.data_file = self.data_dir / f"{self.current_date}.csv"
 
     def remove_data_file(self):
         self._ensure_data_dir()
-        trash_file = self.trash_dir / f"{self.data_file.stem}_trash_{datetime.now().strftime('%H_%M_%S')}.csv"
+        trash_file = (
+            self.trash_dir
+            / f"{self.data_file.stem}_trash_{datetime.now().strftime('%H_%M_%S')}.csv"
+        )
         if self.data_file.exists():
             os.rename(self.data_file, trash_file)
 
@@ -102,7 +105,7 @@ class GitStorage:
         if len(events) == 0:
             return None
         return events[-1].hash
-        
+
     def get_project_at_time(self, timestamp: datetime) -> Optional[GitCommit]:
         events = self.get_events()
         commit = None
@@ -118,5 +121,9 @@ class GitStorage:
         """List all git projects in the data directory"""
         projects = []
         if GIT_DATA_DIR.exists():
-            projects = [p.name for p in GIT_DATA_DIR.iterdir() if p.is_dir() and p.name != 'trash']
+            projects = [
+                p.name
+                for p in GIT_DATA_DIR.iterdir()
+                if p.is_dir() and p.name != "trash"
+            ]
         return projects

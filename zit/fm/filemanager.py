@@ -3,10 +3,11 @@ from datetime import datetime, timedelta
 import csv
 from zit.storage import *
 
+
 class ZitFileManager:
     def __init__(self):
-        self.data_dir = Path.home() / '.zit'
-        self.trash_dir = Path.home() / '.zit/trash'
+        self.data_dir = Path.home() / ".zit"
+        self.trash_dir = Path.home() / ".zit/trash"
         self._ensure_data_dir()
 
     def _ensure_data_dir(self):
@@ -16,12 +17,8 @@ class ZitFileManager:
 
     def get_all_dates(self):
         """Get all files in the data directory, excluding subtask files"""
-        return [f for f in self.data_dir.glob('*.csv') if not f.name.endswith('_subtasks.csv')]
-
-
-
-
-
-   
-
-    
+        return [
+            f
+            for f in self.data_dir.glob("*.csv")
+            if not f.name.endswith("_subtasks.csv")
+        ]

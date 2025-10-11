@@ -1,6 +1,7 @@
 from datetime import datetime
 from zit.events import Event, Project, Subtask, ProjectInterval, ProjectIntervalStorage
 
+
 def calculate_interval(event1: Event, event2: Event):
     start_time = event1.timestamp
     end_time = event2.timestamp
@@ -10,7 +11,11 @@ def calculate_interval(event1: Event, event2: Event):
 def calculate_ongoing_interval(event: Event):
     now = datetime.now()
     end_of_day = datetime(now.year, now.month, now.day, 23, 59, 59)
-    return min((now - event.timestamp).total_seconds(), (end_of_day - event.timestamp).total_seconds())
+    return min(
+        (now - event.timestamp).total_seconds(),
+        (end_of_day - event.timestamp).total_seconds(),
+    )
+
 
 def add_project_times(project_time1, project_time2):
     time_sum = {}
@@ -19,10 +24,11 @@ def add_project_times(project_time1, project_time2):
         time_sum[key] = project_time1.get(key, 0) + project_time2.get(key, 0)
     return time_sum
 
+
 def calculate_project_times(events, exclude_projects=[], add_ongoing=True):
     if len(events) == 0:
         return {}, 0, 0
-    
+
     project_interval_storage = ProjectIntervalStorage.from_events(events)
     project_times = project_interval_storage.calculate_project_times()
 

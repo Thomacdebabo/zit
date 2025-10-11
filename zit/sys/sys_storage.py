@@ -9,18 +9,20 @@ import getpass
 from .sys_events import SystemEvent, SystemEventType
 
 # Define directory for system-specific data
-SYS_DATA_DIR = Path.home() / '.zit' / 'system'
+SYS_DATA_DIR = Path.home() / ".zit" / "system"
+
 
 def load_date(date):
     return datetime.fromisoformat(date)
 
+
 class SystemStorage:
-    def __init__(self, current_date=datetime.now().strftime('%Y-%m-%d')):
+    def __init__(self, current_date=datetime.now().strftime("%Y-%m-%d")):
         self.data_dir = SYS_DATA_DIR
-        self.trash_dir = self.data_dir / 'trash'
+        self.trash_dir = self.data_dir / "trash"
         self._ensure_data_dir()
         self.current_date = current_date
-        self.data_file = self.data_dir / f'{self.current_date}.csv'
+        self.data_file = self.data_dir / f"{self.current_date}.csv"
 
     def _ensure_data_dir(self):
         """Create data directory if it doesn't exist"""
@@ -33,7 +35,7 @@ class SystemStorage:
             return []
 
         events = []
-        with open(self.data_file, 'r') as f:
+        with open(self.data_file, "r") as f:
             reader = csv.reader(f)
             for row in reader:
                 if not row:
@@ -52,7 +54,7 @@ class SystemStorage:
 
     def _write_events(self, events: List[SystemEvent]):
         """Write events to the daily file"""
-        with open(self.data_file, 'w') as f:
+        with open(self.data_file, "w") as f:
             writer = csv.writer(f)
             for event in events:
                 writer.writerow(event.to_row())
@@ -64,19 +66,23 @@ class SystemStorage:
     def add_event(self, event: SystemEvent):
         """Append a single event to the daily file"""
         events = self._read_events()
-        
+
         # Check if a similar event already exists within a small time window
         time_window = 5  # seconds
         for existing_event in events:
-            time_diff = abs((existing_event.timestamp - event.timestamp).total_seconds())
-            if (time_diff < time_window and 
-                existing_event.event_type == event.event_type and 
-                existing_event.details == event.details):
+            time_diff = abs(
+                (existing_event.timestamp - event.timestamp).total_seconds()
+            )
+            if (
+                time_diff < time_window
+                and existing_event.event_type == event.event_type
+                and existing_event.details == event.details
+            ):
                 # Event already exists, don't add duplicate
                 return
-                
+
         # Append the event if it doesn't exist
-        with open(self.data_file, 'a') as f:
+        with open(self.data_file, "a") as f:
             writer = csv.writer(f)
             writer.writerow(event.to_row())
 
@@ -88,12 +94,15 @@ class SystemStorage:
         self._clean_file()
 
     def set_to_yesterday(self):
-        self.current_date = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
-        self.data_file = self.data_dir / f'{self.current_date}.csv'
+        self.current_date = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+        self.data_file = self.data_dir / f"{self.current_date}.csv"
 
     def remove_data_file(self):
         self._ensure_data_dir()
-        trash_file = self.trash_dir / f"{self.data_file.stem}_trash_{datetime.now().strftime('%H_%M_%S')}.csv"
+        trash_file = (
+            self.trash_dir
+            / f"{self.data_file.stem}_trash_{datetime.now().strftime('%H_%M_%S')}.csv"
+        )
         if self.data_file.exists():
             os.rename(self.data_file, trash_file)
 
@@ -102,5 +111,5 @@ class SystemStorage:
         """Get all dates for which we have system event data"""
         if not SYS_DATA_DIR.exists():
             return []
-            
-        return sorted([f.stem for f in SYS_DATA_DIR.glob("*.csv") if f.is_file()]) 
+
+        return sorted([f.stem for f in SYS_DATA_DIR.glob("*.csv") if f.is_file()])
