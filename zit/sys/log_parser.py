@@ -6,7 +6,6 @@ import os
 from datetime import datetime, timedelta
 import getpass
 import platform
-from pathlib import Path
 import json
 
 from .sys_storage import SystemStorage
@@ -88,7 +87,7 @@ def create_event(entry: dict[str, Any]) -> Optional[SystemEvent]:
         if match:
             user = match.group(1)
         event_type = SystemEventType.LOGIN
-        details = f"User login"
+        details = "User login"
 
     # --- Append event if found ---
     if event_type:
@@ -275,7 +274,7 @@ def get_sleep_wake_events(start_date: Optional[datetime | str] = None) -> list[S
 
 def extract_events_from_logs(start_date: Optional[datetime] = None, end_date: Optional[datetime] = None) -> list[SystemEvent]:
     """Extract system events from log files"""
-    print_string(f"Extracting system events from logs...")
+    print_string("Extracting system events from logs...")
     if not start_date:
         start_date = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     if not end_date:

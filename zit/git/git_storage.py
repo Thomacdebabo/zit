@@ -3,9 +3,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 import os
-import time
 
-from ..events import Project, Subtask, GitCommit
+from ..events import GitCommit
 
 # Define directory for git-specific data
 GIT_DATA_DIR = Path.home() / ".zit" / "git"

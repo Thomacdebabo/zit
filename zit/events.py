@@ -2,19 +2,17 @@ from datetime import datetime
 from pydantic import BaseModel
 import csv
 from pathlib import Path
-from zit.time_utils import interval_2_hms, time_2_str
-from typing import Iterator, Any
-from collections.abc import Sequence
+from zit.time_utils import time_2_str, total_seconds_2_hms
+from collections.abc import Iterator, Sequence
+from abc import ABC, abstractmethod
+from typing_extensions import override
 
 
 def load_date(date: str) -> datetime:
     return datetime.fromisoformat(date)
 
 
-from abc import ABC, abstractmethod
-
-
-class Event(BaseModel, ABC):
+class Event(BaseModel, ABC):  # pyright: ignore[reportUnsafeMultipleInheritance]
     timestamp: datetime
 
     @staticmethod
@@ -23,11 +21,11 @@ class Event(BaseModel, ABC):
         pass
 
     @abstractmethod
-    def to_row(self) -> list[Any]:
+    def to_row(self) -> list[datetime | str]:
         pass
 
 
-class Interval(BaseModel, ABC):
+class Interval(BaseModel, ABC):  # pyright: ignore[reportUnsafeMultipleInheritance]
     start: datetime
     end: datetime
 
@@ -45,9 +43,9 @@ class DataStorage(BaseModel):
             with open(csv_file, "r") as f:
                 reader = csv.reader(f)
                 for row in reader:
-                    events.append(event_type.from_row(row))
-            events.sort(key=lambda x: x.timestamp)
-        return cls(events)
+                    events.append(event_type.from_row(row))  # pyright: ignore[reportUnknownMemberType]
+            events.sort(key=lambda x: x.timestamp)  # pyright: ignore[reportUnknownMemberType, reportUnknownLambdaType]
+        return cls(events)  # pyright: ignore[reportUnknownArgumentType]
 
     def to_csv(self, csv_file: Path) -> None:
         with open(csv_file, "w") as f:
@@ -62,12 +60,13 @@ class DataStorage(BaseModel):
         combined_events: list[Event] = []
         for event in self.events:
             if combined_events:
-                if combined_events[-1].name == event.name:  # type: ignore[attr-defined]
+                if combined_events[-1].name == event.name:  # type: ignore[attr-defined]  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType]
                     continue
             combined_events.append(event)
         self.events = combined_events
 
-    def __iter__(self) -> Iterator[Event]:
+    @override
+    def __iter__(self) -> Iterator[Event]:  # type: ignore[override]  # pyright: ignore[reportIncompatibleMethodOverride]
         return iter(self.events)
 
     def __len__(self) -> int:
@@ -77,7 +76,7 @@ class DataStorage(BaseModel):
         return self.events[index]
 
     def remove_item(self, index: int) -> None:
-        self.events.pop(index)
+        _ = self.events.pop(index)
 
     def __setitem__(self, index: int, value: Event) -> None:
         self.events[index] = value
@@ -92,12 +91,14 @@ class Project(Event):
     name: str
 
     @staticmethod
+    @override
     def from_row(row: Sequence[str]) -> 'Project':
         row = [item.strip() for item in row]
         timestamp = load_date(row[0])
         return Project(timestamp=timestamp, name=row[1])
 
-    def to_row(self) -> list[Any]:
+    @override
+    def to_row(self) -> list[datetime | str]:
         return [self.timestamp, self.name]
 
 
@@ -114,14 +115,17 @@ class ProjectInterval(Interval):
     def duration(self) -> float:
         return (self.end - self.start).total_seconds()
 
+    @override
     def __str__(self) -> str:
-        return f"{self.name} - {interval_2_hms(self.duration)} ( {time_2_str(self.start)} -> {time_2_str(self.end)})"
+        return f"{self.name} - {total_seconds_2_hms(self.duration)} ( {time_2_str(self.start)} -> {time_2_str(self.end)})"
 
 
 class ProjectIntervalStorage(BaseModel):
     intervals: dict[str, list[ProjectInterval]]
 
-    def __init__(self, intervals: list[ProjectInterval] = []) -> None:
+    def __init__(self, intervals: list[ProjectInterval] | None = None) -> None:
+        if intervals is None:
+            intervals = []
         interval_dict: dict[str, list[ProjectInterval]] = {}
         for interval in intervals:
             if interval.name not in interval_dict:
@@ -173,7 +177,9 @@ class ProjectTimes(BaseModel):
         else:
             self.project_times[project] = time
 
-    def total_time(self, exclude_projects: list[str] = []) -> tuple[float, float]:
+    def total_time(self, exclude_projects: list[str] | None = None) -> tuple[float, float]:
+        if exclude_projects is None:
+            exclude_projects = []
         total_time = 0.0
         excluded = 0.0
         for project, time in self.project_times.items():
@@ -190,6 +196,7 @@ class Subtask(Event):
     note: str
 
     @staticmethod
+    @override
     def from_row(row: Sequence[str]) -> 'Subtask':
         row = [item.strip() for item in row]
         timestamp = load_date(row[0])
@@ -198,7 +205,8 @@ class Subtask(Event):
         else:
             return Subtask(timestamp=timestamp, name=row[1], note="")
 
-    def to_row(self) -> list[Any]:
+    @override
+    def to_row(self) -> list[datetime | str]:
         return [self.timestamp, self.name, self.note]
 
 
@@ -210,6 +218,7 @@ class GitCommit(Event):
     email: str
 
     @staticmethod
+    @override
     def from_row(row: Sequence[str]) -> 'GitCommit':
         timestamp = load_date(row[0])
         return GitCommit(
@@ -220,7 +229,8 @@ class GitCommit(Event):
             email=row[4],
         )
 
-    def to_row(self) -> list[Any]:
+    @override
+    def to_row(self) -> list[datetime | str]:
         return [self.timestamp, self.hash, self.message, self.author, self.email]
 
 
@@ -237,19 +247,19 @@ def sort_events(events: list[Event], sub_events: list[Event]) -> list[Event]:
 
 def create_subtask_dict(events: list[Event]) -> dict[str, list[Subtask]]:
     subtask_dict: dict[str, list[Subtask]] = {}
-    name = events[0].name  # type: ignore[attr-defined]
+    name = events[0].name  # type: ignore[attr-defined]  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType, reportUnknownVariableType]
     subtasks: list[Subtask] = []
     for event in events:
         if (
             check_type(event, Project)
             and not check_type(event, Subtask)
-            and event.name != name  # type: ignore[attr-defined]
+            and event.name != name  # type: ignore[attr-defined]  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType]
         ):
             subtask_dict[name] = subtasks
-            name = event.name  # type: ignore[attr-defined]
-            subtasks = subtask_dict.get(name, [])
+            name = event.name  # type: ignore[attr-defined]  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType, reportUnknownVariableType]
+            subtasks = subtask_dict.get(name, [])  # pyright: ignore[reportUnknownArgumentType]
         if check_type(event, Subtask):
-            subtasks.append(event)  # type: ignore[arg-type]
+            subtasks.append(event)  # type: ignore[arg-type]  # pyright: ignore[reportArgumentType]
     return subtask_dict
 
 
@@ -269,7 +279,7 @@ def create_full_list(events: list[Event]) -> list[list[Event | list[Subtask]]]:
             subtasks = []
             project = event
         if check_type(event, Subtask):
-            subtasks.append(event)  # type: ignore[arg-type]
+            subtasks.append(event)  # type: ignore[arg-type]  # pyright: ignore[reportArgumentType]
         i += 1
     projects.append([project, subtasks])
     return projects

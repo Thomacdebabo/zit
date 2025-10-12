@@ -1,12 +1,10 @@
 import csv
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional, List
+from typing import List
 import os
-import time
-import getpass
 
-from .sys_events import SystemEvent, SystemEventType
+from .sys_events import SystemEvent
 
 # Define directory for system-specific data
 SYS_DATA_DIR = Path.home() / ".zit" / "system"

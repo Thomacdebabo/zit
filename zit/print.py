@@ -1,8 +1,8 @@
-from .terminal import *
+from .terminal import print_string
 from .calculate import calculate_interval, calculate_ongoing_interval
-from .events import *
+from .events import Project, Subtask, sort_events, check_type
 from enum import Enum, auto
-from zit.time_utils import interval_2_hms, time_2_str, total_seconds_2_hms
+from zit.time_utils import time_2_str, total_seconds_2_hms, interval_2_hms
 
 DEFAULT_MAX_WIDTH = 70
 
@@ -77,11 +77,11 @@ def print_events_and_subtasks(
                 check_type(all_events[i + 1], Subtask)
                 or all_events[i + 1].name == "STOP"
             ):
-                str_to_print += f"  ├─ "
+                str_to_print += "  ├─ "
                 print_note += "  │  "
             else:
-                str_to_print += f"  └─ "
-                print_note += f"     "
+                str_to_print += "  └─ "
+                print_note += "     "
             str_to_print += event.name
             str_to_print = str_to_print.ljust(pad_length, " ")
 
@@ -150,7 +150,7 @@ def print_ongoing_interval(event: Project) -> None:
 
 def print_total_time(sum: float, excluded: float) -> None:
     pretty_print_title("Total time:")
-    print_string(f"Total:".ljust(DEFAULT_MAX_WIDTH - 8) + f"{total_seconds_2_hms(sum)}")
+    print_string("Total:".ljust(DEFAULT_MAX_WIDTH - 8) + f"{total_seconds_2_hms(sum)}")
     print_string(
-        f"Excluded:".ljust(DEFAULT_MAX_WIDTH - 8) + f"{total_seconds_2_hms(excluded)}"
+        "Excluded:".ljust(DEFAULT_MAX_WIDTH - 8) + f"{total_seconds_2_hms(excluded)}"
     )

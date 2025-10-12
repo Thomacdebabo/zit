@@ -5,15 +5,13 @@ import subprocess
 import tempfile
 import shutil
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 import sys
 
 # Add the parent directory to the path to import zit modules
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from zit.storage import Storage, SubtaskStorage
-from zit.events import Project, Subtask
 
 
 @pytest.fixture

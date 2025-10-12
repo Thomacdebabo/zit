@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
-from ..terminal import *
+from ..terminal import print_string
 import click
 import subprocess
 from datetime import datetime
 import os
 import shutil
-from pathlib import Path
 from .git_storage import GitStorage, GIT_DATA_DIR
-from ..events import Project, Subtask, GitCommit
-from ..print import print_events_with_index
+from ..events import GitCommit
 
 
 @click.group()
@@ -248,7 +246,7 @@ def list_git_events(date, all, project):
                 print_string(f"\n--- Events for {date_str} ---")
 
                 if commits:
-                    print_string(f"\nCommits:")
+                    print_string("\nCommits:")
                     current_author = None
                     for commit in commits:
                         if current_author != commit.author:

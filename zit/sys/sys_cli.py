@@ -1,18 +1,13 @@
 #!/usr/bin/env python3
 
 import click
-import subprocess
 from datetime import datetime, timedelta
-import os
-import platform
 import shutil
 import getpass
-from pathlib import Path
-import re
 
 from ..terminal import print_string
 from .sys_storage import SystemStorage, SYS_DATA_DIR
-from .sys_events import SystemEvent, SystemEventType
+from .sys_events import SystemEventType
 from .log_parser import extract_events_from_logs, save_events_to_storage
 
 
@@ -65,7 +60,7 @@ def list_events(date, all, n):
         try:
             datetime.strptime(date, "%Y-%m-%d")
         except ValueError:
-            print_string(f"Invalid date format. Please use YYYY-MM-DD")
+            print_string("Invalid date format. Please use YYYY-MM-DD")
             return
         dates = [date]
     else:

@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from zit.events import Event, Project, Subtask, ProjectInterval, ProjectIntervalStorage
+from zit.events import Event, Project, ProjectIntervalStorage
 
 
 def calculate_interval(event1: Event, event2: Event) -> timedelta:

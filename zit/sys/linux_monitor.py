@@ -2,14 +2,11 @@
 
 import subprocess
 import time
-import re
-import os
 import signal
 import sys
 from datetime import datetime
 import getpass
 import psutil
-from pathlib import Path
 
 from ..sys_storage import SystemStorage
 from ..sys_events import SystemEvent, SystemEventType

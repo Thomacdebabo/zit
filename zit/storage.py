@@ -1,14 +1,12 @@
-import csv
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 import os
-import time
+
+from zit.events import Project, Subtask, DataStorage
 
 DATA_DIR = Path.home() / ".zit"
 TRASH_DIR = Path.home() / ".zit/trash"
-
-from zit.events import Project, Subtask, DataStorage
 
 
 class Storage:
@@ -82,9 +80,9 @@ class Storage:
             return None
         return data_storage[-1].name  # type: ignore[return-value]
 
-    def get_project_at_time(self, timestamp: datetime) -> Optional[Project]:
+    def get_project_at_time(self, timestamp: datetime) -> Project | None:
         data_storage = self._read_events()
-        project: Optional[Project] = None
+        project: Project | None = None
         for event in data_storage:
             if event.timestamp <= timestamp:
                 project = event  # type: ignore[assignment]

@@ -5,10 +5,14 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+    "basedpyright>=1.31.7",
     "click>=8.2.1",
+    "mypy>=1.18.2",
     "pydantic>=2.11.7",
     "pyinstaller>=6.16.0",
+    "pyright>=1.1.406",
     "pytest>=8.4.1",
+    "ruff>=0.14.0",
 ]
 [project.scripts]
 zit = "zit.cli:cli"

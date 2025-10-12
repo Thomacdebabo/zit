@@ -1,14 +1,22 @@
 #!/usr/bin/env python3
 
 import click
-from .terminal import *
+from .terminal import print_string, prompt_for_index
 from .storage import Storage, SubtaskStorage
 from datetime import datetime, timedelta
-from .storage import Project, Subtask
-
-from .calculate import *
-from .print import *
-from .verify import *
+from .events import Project, Subtask
+from .calculate import calculate_project_times
+from .print import (
+    print_intervals,
+    print_ongoing_interval,
+    print_project_times,
+    print_total_time,
+    pretty_print_title,
+    print_events_with_index,
+    print_events_and_subtasks,
+    VerbosityLevel,
+)
+from .verify import verify_lunch, verify_stop, verify_no_default_project
 from .fm.filemanager import ZitFileManager
 
 
