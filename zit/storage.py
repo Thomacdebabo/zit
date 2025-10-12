@@ -12,15 +12,15 @@ from zit.events import Project, Subtask, DataStorage
 
 
 class Storage:
-    def __init__(self, current_date=datetime.now().strftime("%Y-%m-%d")):
-        self.data_dir = DATA_DIR
-        self.trash_dir = TRASH_DIR
+    def __init__(self, current_date: str = datetime.now().strftime("%Y-%m-%d")) -> None:
+        self.data_dir: Path = DATA_DIR
+        self.trash_dir: Path = TRASH_DIR
         self._ensure_data_dir()
-        self.current_date = current_date
-        self.data_file = self.data_dir / f"{self.current_date}.csv"
-        self.exclude_projects = ["STOP", "LUNCH"]
+        self.current_date: str = current_date
+        self.data_file: Path = self.data_dir / f"{self.current_date}.csv"
+        self.exclude_projects: list[str] = ["STOP", "LUNCH"]
 
-    def _ensure_data_dir(self):
+    def _ensure_data_dir(self) -> None:
         """Create data directory if it doesn't exist"""
         self.data_dir.mkdir(exist_ok=True)
         self.trash_dir.mkdir(exist_ok=True)
@@ -29,22 +29,22 @@ class Storage:
         """Read all events from the daily file"""
         return DataStorage.from_csv(self.data_file, Project)
 
-    def _clean_file(self):
+    def _clean_file(self) -> None:
         """Clean the daily file"""
         data_storage = self._read_events()
         data_storage.sort()
         data_storage.combine_events()
         data_storage.to_csv(self.data_file)
 
-    def _write_events(self, data_storage: DataStorage):
+    def _write_events(self, data_storage: DataStorage) -> None:
         """Write events to the daily file"""
         data_storage.to_csv(self.data_file)
 
     def get_events(self) -> list[Project | Subtask]:
         data_storage = self._read_events()
-        return data_storage.events
+        return data_storage.events  # type: ignore[return-value]
 
-    def add_event(self, event: Project):
+    def add_event(self, event: Project) -> None:
         """Append a single event to the daily file"""
         data_storage = self._read_events()
         for existing_event in data_storage:
@@ -54,18 +54,18 @@ class Storage:
         data_storage.add_item(event)
         self._write_events(data_storage)
 
-    def clean_storage(self):
+    def clean_storage(self) -> None:
         self._clean_file()
 
-    def set_to_date(self, date: str):
+    def set_to_date(self, date: str) -> None:
         self.current_date = date
         self.data_file = self.data_dir / f"{self.current_date}.csv"
 
-    def set_to_yesterday(self):
+    def set_to_yesterday(self) -> None:
         yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
         self.set_to_date(yesterday)
 
-    def remove_data_file(self):
+    def remove_data_file(self) -> None:
         self._ensure_data_dir()
         trash_file = (
             self.trash_dir
@@ -78,23 +78,23 @@ class Storage:
         data_storage = self._read_events()
         if len(data_storage) == 0:
             return None
-        if data_storage[-1].name in self.exclude_projects:
+        if data_storage[-1].name in self.exclude_projects:  # type: ignore[attr-defined]
             return None
-        return data_storage[-1].name
+        return data_storage[-1].name  # type: ignore[return-value]
 
     def get_project_at_time(self, timestamp: datetime) -> Optional[Project]:
         data_storage = self._read_events()
-        project = None
+        project: Optional[Project] = None
         for event in data_storage:
             if event.timestamp <= timestamp:
-                project = event
+                project = event  # type: ignore[assignment]
             else:
                 break
         return project
 
 
 class SubtaskStorage(Storage):
-    def __init__(self, current_date=datetime.now().strftime("%Y-%m-%d")):
+    def __init__(self, current_date: str = datetime.now().strftime("%Y-%m-%d")) -> None:
         super().__init__(current_date)
         self.data_file = self.data_dir / f"{self.current_date}_subtasks.csv"
 

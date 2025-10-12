@@ -14,9 +14,10 @@ from pathlib import Path
 from ..sys_storage import SystemStorage
 from ..sys_events import SystemEvent, SystemEventType
 from ..terminal import print_string
+from typing import Optional, Any
 
 # Target applications to monitor (can be extended)
-TARGET_APPS = {
+TARGET_APPS: dict[str, str] = {
     "firefox": "Firefox",
     "chrome": "Chrome",
     "code": "VSCode",
@@ -29,11 +30,11 @@ TARGET_APPS = {
 }
 
 # Global state tracking
-running_processes = {}
-last_boot_time = None
+running_processes: dict[int, tuple[str, str]] = {}
+last_boot_time: Optional[datetime] = None
 
 
-def track_event(event_type, details=""):
+def track_event(event_type: SystemEventType, details: str = "") -> None:
     """Track a system event"""
     event = SystemEvent(
         timestamp=datetime.now(),
@@ -48,12 +49,12 @@ def track_event(event_type, details=""):
     print_string(f"Tracked {event_type} event: {details}")
 
 
-def get_boot_time():
+def get_boot_time() -> datetime:
     """Get the system boot time"""
     return datetime.fromtimestamp(psutil.boot_time())
 
 
-def check_startup():
+def check_startup() -> None:
     """Check if the system has just started up"""
     global last_boot_time
 
@@ -71,7 +72,7 @@ def check_startup():
         track_event(SystemEventType.STARTUP, f"System booted at {boot_time_str}")
 
 
-def check_sleep_wake():
+def check_sleep_wake() -> None:
     """Check for sleep/wake events using systemd journal"""
     # Use journalctl to look for sleep/wake events in the last minute
     try:
@@ -110,12 +111,12 @@ def check_sleep_wake():
             pass
 
 
-def check_app_launches():
+def check_app_launches() -> None:
     """Check for target application launches and closures"""
     global running_processes
 
     # Check for target applications in currently running processes
-    current_processes = {}
+    current_processes: dict[int, tuple[str, str]] = {}
     for proc in psutil.process_iter(["pid", "name", "cmdline"]):
         try:
             proc_info = proc.info
@@ -143,13 +144,13 @@ def check_app_launches():
     running_processes = current_processes
 
 
-def monitor(interval=60, apps=None):
+def monitor(interval: int = 60, apps: Optional[list[str]] = None) -> None:
     """Monitor the system for events continuously"""
     global TARGET_APPS
 
     if apps:
         # Only monitor the specified apps
-        filtered_apps = {}
+        filtered_apps: dict[str, str] = {}
         for app in apps:
             for target, display_name in TARGET_APPS.items():
                 if app.lower() in target or target in app.lower():
@@ -162,7 +163,7 @@ def monitor(interval=60, apps=None):
     print_string(f"Monitoring apps: {', '.join(app for app in TARGET_APPS.values())}")
     print_string("Press Ctrl+C to stop monitoring.")
 
-    def signal_handler(sig, frame):
+    def signal_handler(sig: int, frame: Any) -> None:
         print_string("\nStopping monitor...")
         sys.exit(0)
 

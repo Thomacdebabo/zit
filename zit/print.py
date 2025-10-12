@@ -27,21 +27,21 @@ def split_line(text: str, max_length: int) -> list[str]:
     return lines
 
 
-def pretty_print_title(title):
+def pretty_print_title(title: str) -> None:
     width = max(len(title) + 10, DEFAULT_MAX_WIDTH)
     print_string("┌" + "─" * (width - 2) + "┐")
     print_string(f"│ {title}".ljust(width - 1, " ") + "│")
     print_string("└" + "─" * (width - 2) + "┘")
 
 
-def print_interval(event1, event2):
+def print_interval(event1: Project, event2: Project) -> None:
     interval = calculate_interval(event1, event2)
     print_string(
         f"{event1.name} - {interval_2_hms(interval)} ( {time_2_str(event1.timestamp)} -> {time_2_str(event2.timestamp)})"
     )
 
 
-def print_intervals(events):
+def print_intervals(events: list[Project]) -> None:
     for i in range(1, len(events)):
         start_event = events[i - 1]
         end_event = events[i]
@@ -49,11 +49,11 @@ def print_intervals(events):
 
 
 def print_events_and_subtasks(
-    events,
-    sub_events,
-    project_times,
+    events: list[Project],
+    sub_events: list[Subtask],
+    project_times: dict[str, float],
     verbosity: VerbosityLevel = VerbosityLevel.FULL_NOTES,
-):
+) -> None:
     pretty_print_title("Events and Subtasks:")
 
     all_events = []
@@ -123,12 +123,12 @@ def print_events_and_subtasks(
                         print_string(print_note + f"    {line}")
 
 
-def print_events_with_index(events):
+def print_events_with_index(events: list[Project | Subtask]) -> None:
     for i, event in enumerate(events):
         print_string(f"{i}: {event.name} - {time_2_str(event.timestamp)}")
 
 
-def print_project_times(project_times, verbose=False):
+def print_project_times(project_times: dict[str, float], verbose: bool = False) -> None:
     # TODO if verbose also print subtask times
     pretty_print_title("Time per project:")
     for project, total_time in sorted(
@@ -141,14 +141,14 @@ def print_project_times(project_times, verbose=False):
         print_string(string)
 
 
-def print_ongoing_interval(event):
+def print_ongoing_interval(event: Project) -> None:
     if event.name != "STOP":
         ongoing_interval = calculate_ongoing_interval(event)
         print_string("Ongoing project:")
         print_string(f"{event.name} - {total_seconds_2_hms(ongoing_interval)}")
 
 
-def print_total_time(sum, excluded):
+def print_total_time(sum: float, excluded: float) -> None:
     pretty_print_title("Total time:")
     print_string(f"Total:".ljust(DEFAULT_MAX_WIDTH - 8) + f"{total_seconds_2_hms(sum)}")
     print_string(

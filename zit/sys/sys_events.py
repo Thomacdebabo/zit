@@ -1,6 +1,8 @@
 from datetime import datetime
 from pydantic import BaseModel
 from enum import Enum
+from typing import Any
+from collections.abc import Sequence
 
 
 class SystemEventType(str, Enum):
@@ -20,11 +22,11 @@ class SystemEvent(BaseModel):
     details: str = ""
     user: str = ""
 
-    def to_row(self):
+    def to_row(self) -> list[Any]:
         return [self.timestamp, self.event_type, self.details, self.user]
 
     @classmethod
-    def from_row(cls, row):
+    def from_row(cls, row: Sequence[Any]) -> 'SystemEvent':
         if len(row) >= 4:
             return cls(timestamp=row[0], event_type=row[1], details=row[2], user=row[3])
         elif len(row) == 3:

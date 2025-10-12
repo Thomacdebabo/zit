@@ -12,19 +12,19 @@ from .sys_events import SystemEvent, SystemEventType
 SYS_DATA_DIR = Path.home() / ".zit" / "system"
 
 
-def load_date(date):
+def load_date(date: str) -> datetime:
     return datetime.fromisoformat(date)
 
 
 class SystemStorage:
-    def __init__(self, current_date=datetime.now().strftime("%Y-%m-%d")):
-        self.data_dir = SYS_DATA_DIR
-        self.trash_dir = self.data_dir / "trash"
+    def __init__(self, current_date: str = datetime.now().strftime("%Y-%m-%d")) -> None:
+        self.data_dir: Path = SYS_DATA_DIR
+        self.trash_dir: Path = self.data_dir / "trash"
         self._ensure_data_dir()
-        self.current_date = current_date
-        self.data_file = self.data_dir / f"{self.current_date}.csv"
+        self.current_date: str = current_date
+        self.data_file: Path = self.data_dir / f"{self.current_date}.csv"
 
-    def _ensure_data_dir(self):
+    def _ensure_data_dir(self) -> None:
         """Create data directory if it doesn't exist"""
         self.data_dir.mkdir(exist_ok=True, parents=True)
         self.trash_dir.mkdir(exist_ok=True, parents=True)
@@ -46,13 +46,13 @@ class SystemStorage:
 
         return self._sort_events(events)
 
-    def _clean_file(self):
+    def _clean_file(self) -> None:
         """Clean the daily file"""
         events = self._read_events()
         events = self._sort_events(events)
         self._write_events(events)
 
-    def _write_events(self, events: List[SystemEvent]):
+    def _write_events(self, events: List[SystemEvent]) -> None:
         """Write events to the daily file"""
         with open(self.data_file, "w") as f:
             writer = csv.writer(f)
@@ -63,7 +63,7 @@ class SystemStorage:
         events = self._read_events()
         return self._sort_events(events)
 
-    def add_event(self, event: SystemEvent):
+    def add_event(self, event: SystemEvent) -> None:
         """Append a single event to the daily file"""
         events = self._read_events()
 
@@ -90,14 +90,14 @@ class SystemStorage:
         events.sort(key=lambda event: event.timestamp)
         return events
 
-    def clean_storage(self):
+    def clean_storage(self) -> None:
         self._clean_file()
 
-    def set_to_yesterday(self):
+    def set_to_yesterday(self) -> None:
         self.current_date = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
         self.data_file = self.data_dir / f"{self.current_date}.csv"
 
-    def remove_data_file(self):
+    def remove_data_file(self) -> None:
         self._ensure_data_dir()
         trash_file = (
             self.trash_dir
@@ -107,7 +107,7 @@ class SystemStorage:
             os.rename(self.data_file, trash_file)
 
     @staticmethod
-    def get_all_dates():
+    def get_all_dates() -> list[str]:
         """Get all dates for which we have system event data"""
         if not SYS_DATA_DIR.exists():
             return []

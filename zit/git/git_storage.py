@@ -13,16 +13,16 @@ GIT_DATA_DIR = Path.home() / ".zit" / "git"
 
 class GitStorage:
     def __init__(
-        self, project_name="default", current_date=datetime.now().strftime("%Y-%m-%d")
-    ):
-        self.project_name = project_name
-        self.data_dir = GIT_DATA_DIR / self.project_name
-        self.trash_dir = self.data_dir / "trash"
+        self, project_name: str = "default", current_date: str = datetime.now().strftime("%Y-%m-%d")
+    ) -> None:
+        self.project_name: str = project_name
+        self.data_dir: Path = GIT_DATA_DIR / self.project_name
+        self.trash_dir: Path = self.data_dir / "trash"
         self._ensure_data_dir()
-        self.current_date = current_date
-        self.data_file = self.data_dir / f"{self.current_date}.csv"
+        self.current_date: str = current_date
+        self.data_file: Path = self.data_dir / f"{self.current_date}.csv"
 
-    def _ensure_data_dir(self):
+    def _ensure_data_dir(self) -> None:
         """Create data directory if it doesn't exist"""
         self.data_dir.mkdir(exist_ok=True, parents=True)
         self.trash_dir.mkdir(exist_ok=True, parents=True)
@@ -41,7 +41,7 @@ class GitStorage:
 
         return self._sort_events(commits)
 
-    def _clean_file(self):
+    def _clean_file(self) -> None:
         """Clean the daily file"""
         events = self._read_events()
         events = self._sort_events(events)
@@ -50,7 +50,7 @@ class GitStorage:
 
     def _combine_events(self, events: list[GitCommit]) -> list[GitCommit]:
         """Combine events with the same project name following the same logic as the CLI"""
-        combined_events = []
+        combined_events: list[GitCommit] = []
         for event in events:
             if combined_events:
                 if combined_events[-1].hash == event.hash:
@@ -58,7 +58,7 @@ class GitStorage:
             combined_events.append(event)
         return combined_events
 
-    def _write_events(self, events: list[GitCommit]):
+    def _write_events(self, events: list[GitCommit]) -> None:
         """Write events to the daily file"""
         with open(self.data_file, "w") as f:
             writer = csv.writer(f)
@@ -69,7 +69,7 @@ class GitStorage:
         events = self._read_events()
         return self._sort_events(events)
 
-    def add_event(self, event: GitCommit):
+    def add_event(self, event: GitCommit) -> None:
         """Append a single event to the daily file"""
         events = self._read_events()
         for existing_event in events:
@@ -84,14 +84,14 @@ class GitStorage:
         events.sort(key=lambda event: event.timestamp)
         return events
 
-    def clean_storage(self):
+    def clean_storage(self) -> None:
         self._clean_file()
 
-    def set_to_yesterday(self):
+    def set_to_yesterday(self) -> None:
         self.current_date = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
         self.data_file = self.data_dir / f"{self.current_date}.csv"
 
-    def remove_data_file(self):
+    def remove_data_file(self) -> None:
         self._ensure_data_dir()
         trash_file = (
             self.trash_dir
@@ -108,7 +108,7 @@ class GitStorage:
 
     def get_project_at_time(self, timestamp: datetime) -> Optional[GitCommit]:
         events = self.get_events()
-        commit = None
+        commit: Optional[GitCommit] = None
         for event in events:
             if event.timestamp <= timestamp:
                 commit = event
@@ -117,9 +117,9 @@ class GitStorage:
         return commit
 
     @staticmethod
-    def list_projects():
+    def list_projects() -> list[str]:
         """List all git projects in the data directory"""
-        projects = []
+        projects: list[str] = []
         if GIT_DATA_DIR.exists():
             projects = [
                 p.name

@@ -12,22 +12,23 @@ import json
 from .sys_storage import SystemStorage
 from .sys_events import SystemEvent, SystemEventType
 from ..terminal import print_string
+from typing import Optional, Any
 
 
-def get_boot_events():
+def get_boot_events() -> str:
     cmd_boots = ["journalctl", "--list-boots", "--no-pager", "-o", "json"]
     output_boots = subprocess.check_output(cmd_boots, text=True)
     return output_boots
 
 
-def get_other_events(start_date="today"):
+def get_other_events(start_date: str | datetime = "today") -> str:
     cmd_json = ["journalctl", f"--since={start_date}", "-o", "json", "--no-pager"]
     output_json = subprocess.check_output(cmd_json, text=True)
     return output_json
 
 
-def parse_boot_events(output_boots):
-    events = []
+def parse_boot_events(output_boots: str) -> list[SystemEvent]:
+    events: list[SystemEvent] = []
     pattern = re.compile(r"(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})")
 
     for line in output_boots.strip().split("\n"):
@@ -45,8 +46,8 @@ def parse_boot_events(output_boots):
     return events
 
 
-def parse_other_events(output_json):
-    events = []
+def parse_other_events(output_json: str) -> list[SystemEvent]:
+    events: list[SystemEvent] = []
     for line in output_json.strip().split("\n"):
         entry = json.loads(line)
         event = create_event(entry)
@@ -55,8 +56,8 @@ def parse_other_events(output_json):
     return events
 
 
-def create_event(entry):
-    event_type = None
+def create_event(entry: dict[str, Any]) -> Optional[SystemEvent]:
+    event_type: Optional[SystemEventType] = None
     user = getpass.getuser()
     message = entry.get("MESSAGE", "")
     timestamp_usec = entry.get("__REALTIME_TIMESTAMP")
@@ -97,14 +98,14 @@ def create_event(entry):
     return None
 
 
-def get_auth_log():
+def get_auth_log() -> str | list:
     auth_log_file = "/var/log/auth.log"
     if not os.path.exists(auth_log_file) or not os.access(auth_log_file, os.R_OK):
         return []
     return auth_log_file
 
 
-def create_login_event(line):
+def create_login_event(line: str) -> Optional[SystemEvent]:
     timestamp_pattern = re.compile(r"(\w{3}\s+\d+\s+\d{2}:\d{2}:\d{2})")
     user_pattern = re.compile(r"for user (\w+)|for (\w+) from")
     current_year = datetime.now().year
@@ -134,11 +135,11 @@ def create_login_event(line):
     return None
 
 
-def get_login_events(auth_log_file):
+def get_login_events(auth_log_file: str) -> list[SystemEvent]:
     cmd = ["grep", "-E", "session opened for user|Accepted password for", auth_log_file]
     output = subprocess.check_output(cmd, text=True)
 
-    events = []
+    events: list[SystemEvent] = []
     for line in output.split("\n"):
         if not line:
             continue
@@ -148,7 +149,7 @@ def get_login_events(auth_log_file):
     return events
 
 
-def parse_auth_log(start_date=None, end_date=None):
+def parse_auth_log(start_date: Optional[datetime] = None, end_date: Optional[datetime] = None) -> list[SystemEvent]:
     """Parse auth.log for login/logout events"""
     events = []
 
@@ -211,7 +212,7 @@ def parse_auth_log(start_date=None, end_date=None):
     return events
 
 
-def create_sleep_wake_event(entry):
+def create_sleep_wake_event(entry: dict[str, Any]) -> Optional[SystemEvent]:
     """Create a SLEEP or WAKE event from a journalctl JSON entry"""
     message = entry.get("MESSAGE", "")
     timestamp_usec = entry.get("__REALTIME_TIMESTAMP")
@@ -220,7 +221,7 @@ def create_sleep_wake_event(entry):
         return None
 
     timestamp = datetime.fromtimestamp(int(timestamp_usec) / 1_000_000)
-    event_type = None
+    event_type: Optional[SystemEventType] = None
     details = ""
     user = getpass.getuser()
 
@@ -238,9 +239,9 @@ def create_sleep_wake_event(entry):
     return None
 
 
-def get_sleep_wake_events(start_date=None):
+def get_sleep_wake_events(start_date: Optional[datetime | str] = None) -> list[SystemEvent]:
     """Get SLEEP and WAKE events from journalctl"""
-    events = []
+    events: list[SystemEvent] = []
     try:
         cmd = [
             "journalctl",
@@ -272,7 +273,7 @@ def get_sleep_wake_events(start_date=None):
     return events
 
 
-def extract_events_from_logs(start_date=None, end_date=None):
+def extract_events_from_logs(start_date: Optional[datetime] = None, end_date: Optional[datetime] = None) -> list[SystemEvent]:
     """Extract system events from log files"""
     print_string(f"Extracting system events from logs...")
     if not start_date:
@@ -281,7 +282,7 @@ def extract_events_from_logs(start_date=None, end_date=None):
         end_date = (datetime.now() + timedelta(days=1)).replace(
             hour=0, minute=0, second=0, microsecond=0
         )
-    all_events = []
+    all_events: list[SystemEvent] = []
     system = platform.system()
 
     if system == "Linux":
@@ -321,14 +322,14 @@ def extract_events_from_logs(start_date=None, end_date=None):
     return all_events
 
 
-def save_events_to_storage(events):
+def save_events_to_storage(events: list[SystemEvent]) -> int:
     """Save extracted events to system storage"""
     if not events:
         print_string("No events to save")
         return 0
 
     # Group events by date
-    events_by_date = {}
+    events_by_date: dict[str, list[SystemEvent]] = {}
     for event in events:
         date_str = event.timestamp.strftime("%Y-%m-%d")
         if date_str not in events_by_date:
