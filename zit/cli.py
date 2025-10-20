@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
 
 import click
-from .terminal import print_string, prompt_for_index, date_options
+from .terminal import (
+    print_string,
+    prompt_for_index,
+    date_options,
+    time_argument,
+)
 from .storage import Storage, SubtaskStorage
 from datetime import datetime, timedelta
 from .events import Project, Subtask
@@ -18,40 +23,7 @@ from .print import (
 )
 from .verify import verify_lunch, verify_stop, verify_no_default_project
 from .fm.filemanager import ZitFileManager
-
-
-def verify_date(date):
-    try:
-        datetime.strptime(date, "%Y-%m-%d")
-    except ValueError:
-        raise ValueError("Invalid date format. Please use YYYY-MM-DD format.")
-
-
-
-
-def determine_date(yesterday, date):
-    if yesterday:
-        return (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
-    elif date:
-        verify_date(date)
-        return date
-    else:
-        return datetime.now().strftime("%Y-%m-%d")
-
-
-def parse_time(time):
-    # Parse the time format (HHMM)
-    if len(time) != 4 or not time.isdigit():
-        raise ValueError("Time must be in HHMM format (e.g., 1200 for noon)")
-
-    hour = int(time[:2])
-    minute = int(time[2:])
-
-    if hour < 0 or hour > 23 or minute < 0 or minute > 59:
-        raise ValueError("Invalid time values")
-    now = datetime.now()
-    event_time = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
-    return event_time
+from .time_utils import parse_time, verify_date, determine_date
 
 
 def pick_event(events):
@@ -71,8 +43,15 @@ def cli():
 
 @cli.command()
 @click.argument("project", default="DEFAULT")
-def start(project):
-    """Start tracking time for a project"""
+def start(project: str):
+    """Start tracking time for a project.
+
+    Begin tracking time for the specified project. If no project name is provided,
+    uses "DEFAULT" as the project name.
+
+    Examples:
+      zit start meeting
+    """
     try:
         storage = Storage()
         storage.add_event(Project(timestamp=datetime.now(), name=project))
@@ -83,17 +62,31 @@ def start(project):
 
 @cli.command()
 def stop():
-    """Stop tracking time"""
+    """Stop tracking time.
+
+    End the current time tracking session by adding a STOP event.
+
+    Examples:
+      zit stop
+    """
     print_string("Stopping time tracking...")
     storage = Storage()
     storage.add_event(Project(timestamp=datetime.now(), name="STOP"))
 
 
 @cli.command()
-@click.argument("time", required=False, default=None, metavar="TIME (format: HHMM)")
-def lunch(time):
-    """Start tracking time for lunch"""
+@time_argument
+def lunch(time: str):
+    """Start tracking time for lunch.
 
+    Add a LUNCH event at the current time or at a specific time if provided.
+    Time format: HHMM (e.g., 1200 for noon, 1330 for 1:30 PM)
+
+    Examples:
+      zit lunch
+      zit lunch 1200
+      zit lunch 1330
+    """
     print_string("Starting lunch time tracking...")
     if time:
         try:
@@ -109,8 +102,23 @@ def lunch(time):
 
 @cli.command()
 @date_options
-def status(yesterday, date):
-    """Show current tracking status"""
+def status(yesterday: bool, date: str):
+    """Show current tracking status.
+
+    Display the status of time tracking for today or a specified date, including
+    all intervals, ongoing tasks, project time summaries, and total time.
+
+    Flags:
+      -y, --yesterday    Show status for yesterday
+      -d, --date DATE    Show status for a specific date (format: YYYY-MM-DD)
+
+    Examples:
+      zit status
+      zit status --yesterday
+      zit status -y
+      zit status --date 2025-10-15
+      zit status -d 2025-10-15
+    """
     day = determine_date(yesterday, date)
     storage = Storage(day)
 
@@ -133,13 +141,29 @@ def status(yesterday, date):
 
 @cli.command()
 @click.argument("project")
-@click.argument("time", metavar="TIME (format: HHMM)")
+@time_argument
 @click.option("--subtask", "--sub", "-s", is_flag=True, help="Add a subtask")
 @click.option("--note", "-n", default="", help="Add a note to the project")
 @date_options
-def add(project, time, subtask, note, yesterday, date):
-    """Add a project with a specific time (format: HHMM, e.g. 1200 for noon)
-    Use --subtask (or --sub, -s) flag to add a subtask instead of a main project"""
+def add(project: str, time: str, subtask: str, note: str, yesterday: bool, date: str):
+    """Add a project or subtask with a specific time.
+
+    Add a project event at the specified time. Time format is HHMM (e.g., 1200 for
+    noon, 0930 for 9:30 AM). Can also add subtasks with the --subtask flag.
+
+    Flags:
+      -s, --subtask, --sub    Add a subtask instead of a main project
+      -n, --note TEXT         Add a note to the project or subtask
+      -y, --yesterday         Add the event for yesterday
+      -d, --date DATE         Add the event for a specific date (format: YYYY-MM-DD)
+
+    Examples:
+      zit add MEETING 1400
+      zit add CODING 0900 --note "Working on feature X"
+      zit add "code review" 1530 --subtask
+      zit add MEETING 1400 --yesterday
+      zit add MEETING 1400 -d 2025-10-15
+    """
     try:
         event_time = parse_time(time)
     except ValueError as e:
@@ -161,9 +185,16 @@ def add(project, time, subtask, note, yesterday, date):
         print_string(f"Added project: {project} at {event_time.strftime('%H:%M')}")
 
 
-@cli.command()
+# @cli.command()
 def clear():
-    """Clear all data"""
+    """Clear all data.
+
+    Delete all time tracking data including projects and subtasks.
+    This operation cannot be undone.
+
+    Examples:
+      zit clear
+    """
     storage = Storage()
     storage.remove_data_file()
 
@@ -174,7 +205,13 @@ def clear():
 
 @cli.command()
 def clean():
-    """Clean the data"""
+    """Clean the data.
+
+    Clean up the storage by removing any invalid or corrupted entries.
+
+    Examples:
+      zit clean
+    """
     storage = Storage()
     storage.clean_storage()
     sub_storage = SubtaskStorage()
@@ -184,8 +221,21 @@ def clean():
 
 @cli.command()
 @date_options
-def verify(yesterday, date):
-    """Verify the data"""
+def verify(yesterday: bool, date: str):
+    """Verify the data.
+
+    Check the data for today or a specified date to ensure it contains required
+    events (LUNCH, STOP) and has no DEFAULT projects or subtasks.
+
+    Flags:
+      -y, --yesterday    Verify the data for yesterday
+      -d, --date DATE    Verify the data for a specific date (format: YYYY-MM-DD)
+
+    Examples:
+      zit verify
+      zit verify --yesterday
+      zit verify -d 2025-10-15
+    """
     day = determine_date(yesterday, date)
     storage = Storage(day)
 
@@ -227,8 +277,23 @@ def verify(yesterday, date):
     help="Remove a subtask instead of a main project",
 )
 @date_options
-def remove(subtask, yesterday, date):
-    """Remove the last event"""
+def remove(subtask: str, yesterday: bool, date: str):
+    """Remove an event.
+
+    Remove a project or subtask event by selecting it from a list.
+    You will be prompted to choose which event to remove.
+
+    Flags:
+      -s, --subtask, --sub    Remove a subtask instead of a main project
+      -y, --yesterday         Remove an event from yesterday
+      -d, --date DATE         Remove an event from a specific date (format: YYYY-MM-DD)
+
+    Examples:
+      zit remove
+      zit remove --subtask
+      zit remove -s -y
+      zit remove -d 2025-10-15
+    """
     day = determine_date(yesterday, date)
     if subtask:
         storage = SubtaskStorage(day)
@@ -258,8 +323,23 @@ def remove(subtask, yesterday, date):
     help="Change a subtask instead of a main project",
 )
 @date_options
-def change(subtask, yesterday, date):
-    """Change an event"""
+def change(subtask: str, yesterday: bool, date: str):
+    """Change an event.
+
+    Change the name of a project or subtask event by selecting it from a list.
+    You will be prompted to choose which event to change and enter a new name.
+
+    Flags:
+      -s, --subtask, --sub    Change a subtask instead of a main project
+      -y, --yesterday         Change an event from yesterday
+      -d, --date DATE         Change an event from a specific date (format: YYYY-MM-DD)
+
+    Examples:
+      zit change
+      zit change --subtask
+      zit change -s -y
+      zit change -d 2025-10-15
+    """
     day = determine_date(yesterday, date)
 
     if subtask:
@@ -290,8 +370,19 @@ def change(subtask, yesterday, date):
 @cli.command()
 @click.argument("subtask", default="DEFAULT")
 @click.option("--note", "-n", default="", help="Add a note to the subtask")
-def sub(subtask, note):
-    """Add a subtask"""
+def sub(subtask: str, note: str):
+    """Add a subtask.
+
+    Add a subtask to the current project at the current time. If no subtask name
+    is provided, uses "DEFAULT" as the subtask name.
+
+    Flags:
+      -n, --note TEXT    Add a note to the subtask
+
+    Examples:
+      zit sub "implement login"
+      zit sub "fix bug" --note "Issue #123"
+    """
     sub_storage = SubtaskStorage()
     storage = Storage()
     current_task = storage.get_current_task()
@@ -306,7 +397,7 @@ def sub(subtask, note):
 @cli.command()
 @click.argument("subtask")
 @click.option("--note", "-n", default="", help="Add a note to the subtask")
-def attach(subtask, note):
+def attach(subtask: str, note: str):
     """Attach a subtask to a main project"""
     storage = Storage()
     sub_storage = SubtaskStorage()
@@ -348,7 +439,7 @@ def current():
 )
 @date_options
 @click.option("-p", "--pick", is_flag=True, help="Pick a date")
-def list(verbosity, pick, yesterday, date):
+def list(verbosity: bool, pick: bool, yesterday: bool, date: str):
     """List all subtasks"""
     if pick:
         zfm = ZitFileManager()
@@ -387,7 +478,7 @@ def list(verbosity, pick, yesterday, date):
 @cli.command()
 @click.argument("note")
 @click.option("--pick", "-p", is_flag=True, help="Pick a subtask to add a note to")
-def note(note, pick):
+def note(note: str, pick: bool):
     """Add a note to the current task"""
     sub_storage = SubtaskStorage()
     events = sub_storage.get_events()

@@ -21,3 +21,11 @@ def date_options(f):
         "--yesterday", "-y", is_flag=True, help="Add the event for yesterday"
     )(f)
     return f
+
+
+def time_argument(f):
+    """Decorator to add time argument to a command"""
+    f = click.argument(
+        "time", required=False, default=None, metavar="TIME (format: HHMM, HMM, HH, H)"
+    )(f)
+    return f
