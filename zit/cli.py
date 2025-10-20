@@ -493,30 +493,38 @@ def list(verbosity: bool, pick: bool, yesterday: bool, date: str):
 def note(note: str, pick: bool):
     """Add a note to the current task"""
     sub_storage = SubtaskStorage()
-    events = sub_storage.get_events()
+    data_storage = sub_storage._read_events()
+    events = data_storage.events
+
     if len(events) == 0:
         print_string("No current task. Operation aborted.")
         return
+
     if pick:
         event = pick_event(events)
         if event is None:
             print_string("Operation aborted.")
             return
+        # Find the index of the picked event
+        event_index = events.index(event)
     else:
-        event = events[-1]
+        event_index = len(events) - 1
+        event = events[event_index]
 
     if event.note:
         print_string(f"Subtask: {event.name}")
         print_string(f"Current note: {event.note}")
         if click.confirm("Do you want to overwrite the note?"):
             event.note = note
-            sub_storage._write_events(events)
+            data_storage[event_index] = event
+            sub_storage._write_events(data_storage)
             print_string(f"Added note to {event.name}: {note}")
         else:
             print_string("Note not overwritten.")
     else:
         event.note = note
-        sub_storage._write_events(events)
+        data_storage[event_index] = event
+        sub_storage._write_events(data_storage)
         print_string(f"Added note to {event.name}: {note}")
 
 
