@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import click
-from .terminal import print_string, prompt_for_index
+from .terminal import print_string, prompt_for_index, date_options
 from .storage import Storage, SubtaskStorage
 from datetime import datetime, timedelta
 from .events import Project, Subtask
@@ -25,6 +25,8 @@ def verify_date(date):
         datetime.strptime(date, "%Y-%m-%d")
     except ValueError:
         raise ValueError("Invalid date format. Please use YYYY-MM-DD format.")
+
+
 
 
 def determine_date(yesterday, date):
@@ -106,13 +108,7 @@ def lunch(time):
 
 
 @cli.command()
-@click.option("--yesterday", "-y", is_flag=True, help="Show status for yesterday")
-@click.option(
-    "--date",
-    "-d",
-    default=None,
-    help="Show status for a specific date (format: YYYY-MM-DD)",
-)
+@date_options
 def status(yesterday, date):
     """Show current tracking status"""
     day = determine_date(yesterday, date)
@@ -140,13 +136,7 @@ def status(yesterday, date):
 @click.argument("time", metavar="TIME (format: HHMM)")
 @click.option("--subtask", "--sub", "-s", is_flag=True, help="Add a subtask")
 @click.option("--note", "-n", default="", help="Add a note to the project")
-@click.option("--yesterday", "-y", is_flag=True, help="Add the event for yesterday")
-@click.option(
-    "--date",
-    "-d",
-    default=None,
-    help="Add the event for a specific date (format: YYYY-MM-DD)",
-)
+@date_options
 def add(project, time, subtask, note, yesterday, date):
     """Add a project with a specific time (format: HHMM, e.g. 1200 for noon)
     Use --subtask (or --sub, -s) flag to add a subtask instead of a main project"""
@@ -193,13 +183,7 @@ def clean():
 
 
 @cli.command()
-@click.option("--yesterday", "-y", is_flag=True, help="Verify the data for yesterday")
-@click.option(
-    "--date",
-    "-d",
-    default=None,
-    help="Verify the data for a specific date (format: YYYY-MM-DD)",
-)
+@date_options
 def verify(yesterday, date):
     """Verify the data"""
     day = determine_date(yesterday, date)
@@ -242,13 +226,7 @@ def verify(yesterday, date):
     is_flag=True,
     help="Remove a subtask instead of a main project",
 )
-@click.option("--yesterday", "-y", is_flag=True, help="Remove the event for yesterday")
-@click.option(
-    "--date",
-    "-d",
-    default=None,
-    help="Remove the event for a specific date (format: YYYY-MM-DD)",
-)
+@date_options
 def remove(subtask, yesterday, date):
     """Remove the last event"""
     day = determine_date(yesterday, date)
@@ -279,13 +257,7 @@ def remove(subtask, yesterday, date):
     is_flag=True,
     help="Change a subtask instead of a main project",
 )
-@click.option("--yesterday", "-y", is_flag=True, help="Change the event for yesterday")
-@click.option(
-    "--date",
-    "-d",
-    default=None,
-    help="Change the event for a specific date (format: YYYY-MM-DD)",
-)
+@date_options
 def change(subtask, yesterday, date):
     """Change an event"""
     day = determine_date(yesterday, date)
@@ -374,13 +346,7 @@ def current():
     default=2,
     help="Increase verbosity level (-v: none, -vv: single line, -vvv: full notes)",
 )
-@click.option("--yesterday", "-y", is_flag=True, help="Change the event for yesterday")
-@click.option(
-    "--date",
-    "-d",
-    default=None,
-    help="Change the event for a specific date (format: YYYY-MM-DD)",
-)
+@date_options
 @click.option("-p", "--pick", is_flag=True, help="Pick a date")
 def list(verbosity, pick, yesterday, date):
     """List all subtasks"""
