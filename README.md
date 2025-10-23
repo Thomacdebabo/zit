@@ -6,7 +6,7 @@
 # Quickstart
 Install:
 ```console
-curl -sSL https://raw.githubusercontent.com/Thomacdebabo/zit/main/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/Thomacdebabo/zit/main/scripts/install_zit.sh | bash
 ```
 Simple use case:
 ```console
@@ -138,7 +138,7 @@ mv ./dist/zit-git ~/.local/bin
 # TODO
 ## General
 - [ ] implement server version
-- [ ] testing
+- [x] testing
 - [x] import timestamps from git
 - [x] import timestamps from system
 

@@ -25,6 +25,8 @@ from .verify import verify_lunch, verify_stop, verify_no_default_project
 from .fm.filemanager import ZitFileManager
 from .time_utils import parse_time, verify_date, determine_date
 
+from importlib.metadata import version, PackageNotFoundError
+
 
 def pick_event(events):
     print_events_with_index(events)
@@ -35,7 +37,17 @@ def pick_event(events):
     return events[index]
 
 
+def get_version():
+    try:
+        return version("zit")
+    except PackageNotFoundError:
+        return "unknown"
+
+
 @click.group()
+@click.version_option(
+    get_version(), "-v", "--version", message="Zit version: %(version)s"
+)
 def cli():
     """Zit - Zimple Interval Tracker: A minimal time tracking CLI tool"""
     pass
