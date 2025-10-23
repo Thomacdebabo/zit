@@ -4,9 +4,17 @@
 - cli?
 
 # Quickstart
-Install:
+Install (linux):
 ```console
 curl -sSL https://raw.githubusercontent.com/Thomacdebabo/zit/main/scripts/install_zit.sh | bash
+```
+Install (windows):
+```console
+irm https://raw.githubusercontent.com/Thomacdebabo/zit/main/scripts/install_zit_win.ps1 -OutFile install_zit_win.ps1
+powershell -ExecutionPolicy Bypass -File install_zit_win.ps1
+rm .\install_zit_win.ps1
+```
+
 ```
 Simple use case:
 ```console
@@ -169,8 +177,6 @@ mv ./dist/zit-git ~/.local/bin
 
 ## 18.04.25
 ```
-┌────────────────────────────────────────────────────────────────────┐
-│ Events and Subtasks:                                               │
 └────────────────────────────────────────────────────────────────────┘
 zit ────────────────────────────────────────────── 16:01:00 | 02:39:10
   ├─ zit-fm                                        16:01:00 | 00:19:51
