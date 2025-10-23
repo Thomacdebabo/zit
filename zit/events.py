@@ -17,7 +17,7 @@ class Event(BaseModel, ABC):  # pyright: ignore[reportUnsafeMultipleInheritance]
 
     @staticmethod
     @abstractmethod
-    def from_row(row: Sequence[str]) -> 'Event':
+    def from_row(row: Sequence[str]) -> "Event":
         pass
 
     @abstractmethod
@@ -43,7 +43,13 @@ class DataStorage(BaseModel):
             with open(csv_file, "r") as f:
                 reader = csv.reader(f)
                 for row in reader:
-                    events.append(event_type.from_row(row))  # pyright: ignore[reportUnknownMemberType]
+                    if not row:
+                        continue
+                    try:
+                        event = event_type.from_row(row)  # pyright: ignore[reportUnknownMemberType]
+                        events.append(event)
+                    except Exception as e:
+                        print(f"Error parsing row {row}: {e}")  # pyright: ignore[reportUnknownMemberType]
             events.sort(key=lambda x: x.timestamp)  # pyright: ignore[reportUnknownMemberType, reportUnknownLambdaType]
         return cls(events)  # pyright: ignore[reportUnknownArgumentType]
 
@@ -92,8 +98,11 @@ class Project(Event):
 
     @staticmethod
     @override
-    def from_row(row: Sequence[str]) -> 'Project':
+    def from_row(row: Sequence[str]) -> "Project":
         row = [item.strip() for item in row]
+        print(row)
+        if len(row) < 2:
+            raise ValueError("Row must have at least 2 elements")
         timestamp = load_date(row[0])
         return Project(timestamp=timestamp, name=row[1])
 
@@ -106,7 +115,7 @@ class ProjectInterval(Interval):
     name: str
 
     @staticmethod
-    def from_events(start_event: Project, end_event: Project) -> 'ProjectInterval':
+    def from_events(start_event: Project, end_event: Project) -> "ProjectInterval":
         return ProjectInterval(
             start=start_event.timestamp, end=end_event.timestamp, name=start_event.name
         )
@@ -134,7 +143,7 @@ class ProjectIntervalStorage(BaseModel):
         super().__init__(intervals=interval_dict)
 
     @staticmethod
-    def from_events(events: list[Project]) -> 'ProjectIntervalStorage':
+    def from_events(events: list[Project]) -> "ProjectIntervalStorage":
         intervals = ProjectIntervalStorage()
         for i in range(1, len(events)):
             interval = ProjectInterval.from_events(events[i - 1], events[i])
@@ -146,7 +155,7 @@ class ProjectIntervalStorage(BaseModel):
             self.intervals[interval.name] = []
         self.intervals[interval.name].append(interval)
 
-    def calculate_project_times(self) -> 'ProjectTimes':
+    def calculate_project_times(self) -> "ProjectTimes":
         return ProjectTimes.from_intervals(self)
 
 
@@ -154,7 +163,7 @@ class ProjectTimes(BaseModel):
     project_times: dict[str, float]
 
     @staticmethod
-    def from_intervals(intervals: ProjectIntervalStorage) -> 'ProjectTimes':
+    def from_intervals(intervals: ProjectIntervalStorage) -> "ProjectTimes":
         project_times: dict[str, float] = {}
         for project, interval_list in intervals.intervals.items():
             project_times[project] = sum(
@@ -162,7 +171,7 @@ class ProjectTimes(BaseModel):
             )
         return ProjectTimes(project_times=project_times)
 
-    def add(self, other: 'ProjectTimes') -> 'ProjectTimes':
+    def add(self, other: "ProjectTimes") -> "ProjectTimes":
         combined_times: dict[str, float] = {}
         all_keys = set(self.project_times.keys()) | set(other.project_times.keys())
         for key in all_keys:
@@ -177,7 +186,9 @@ class ProjectTimes(BaseModel):
         else:
             self.project_times[project] = time
 
-    def total_time(self, exclude_projects: list[str] | None = None) -> tuple[float, float]:
+    def total_time(
+        self, exclude_projects: list[str] | None = None
+    ) -> tuple[float, float]:
         if exclude_projects is None:
             exclude_projects = []
         total_time = 0.0
@@ -197,13 +208,15 @@ class Subtask(Event):
 
     @staticmethod
     @override
-    def from_row(row: Sequence[str]) -> 'Subtask':
+    def from_row(row: Sequence[str]) -> "Subtask":
         row = [item.strip() for item in row]
         timestamp = load_date(row[0])
         if len(row) == 3:
             return Subtask(timestamp=timestamp, name=row[1], note=row[2])
-        else:
+        elif len(row) == 2:
             return Subtask(timestamp=timestamp, name=row[1], note="")
+        else:
+            raise ValueError("Row must have 2 or 3 elements")
 
     @override
     def to_row(self) -> list[datetime | str]:
@@ -219,8 +232,10 @@ class GitCommit(Event):
 
     @staticmethod
     @override
-    def from_row(row: Sequence[str]) -> 'GitCommit':
+    def from_row(row: Sequence[str]) -> "GitCommit":
         timestamp = load_date(row[0])
+        if len(row) < 5:
+            raise ValueError("Row must have at least 5 elements")
         return GitCommit(
             timestamp=timestamp,
             hash=row[1],
