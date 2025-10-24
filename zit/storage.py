@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional
+from typing import Optional, cast
 import os
 
 from zit.events import Project, Subtask, DataStorage
@@ -38,7 +38,7 @@ class Storage:
         """Write events to the daily file"""
         data_storage.to_csv(self.data_file)
 
-    def get_events(self) -> list[Project | Subtask]:
+    def get_events(self) -> list[Project]:
         data_storage = self._read_events()
         return data_storage.events  # type: ignore[return-value]
 
@@ -76,9 +76,12 @@ class Storage:
         data_storage = self._read_events()
         if len(data_storage) == 0:
             return None
-        if data_storage[-1].name in self.exclude_projects:  # type: ignore[attr-defined]
+        last_event = data_storage[-1]
+        if not isinstance(last_event, Project):
             return None
-        return data_storage[-1].name  # type: ignore[return-value]
+        if last_event.name in self.exclude_projects:
+            return None
+        return last_event.name
 
     def get_project_at_time(self, timestamp: datetime) -> Project | None:
         data_storage = self._read_events()
@@ -99,3 +102,17 @@ class SubtaskStorage(Storage):
     def _read_events(self) -> DataStorage:
         """Read all events from the daily file"""
         return DataStorage.from_csv(self.data_file, Subtask)
+
+    def get_events(self) -> list[Subtask]:
+        data_storage = self._read_events()
+        return cast(list[Subtask], data_storage.events)
+
+    def add_event(self, event: Subtask) -> None:
+        """Append a single subtask event to the daily file"""
+        data_storage = self._read_events()
+        for existing_event in data_storage:
+            if existing_event.timestamp == event.timestamp:
+                print(f"Event already exists at {event.timestamp}")
+                return
+        data_storage.add_item(cast(Project, event))
+        self._write_events(data_storage)

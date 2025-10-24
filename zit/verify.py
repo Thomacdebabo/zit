@@ -1,4 +1,4 @@
-from zit.events import Project
+from zit.events import Project, Subtask
 
 
 def verify_contains(events: list[Project], project_name: str) -> bool:
@@ -23,19 +23,23 @@ def verify_stop(events: list[Project]) -> bool:
     return events[-1].name == "STOP"
 
 
-def verify_no_default_project(events: list[Project]) -> bool:
+def verify_no_default_project(events: list[Project] | list[Subtask]) -> bool:
     """Verify that no default project is used"""
     for event in events:
-        if event.name == "DEFAULT":
+        if isinstance(event, (Project, Subtask)) and event.name == "DEFAULT":
             return False
     return True
 
 
 def verify_max_time(events: list[Project]) -> bool:
     """Verify that the total time is less than 24 hours"""
-    total_time = 0
-    for event in events:
-        total_time += event.timestamp  # type: ignore[assignment]
+    if len(events) < 2:
+        return True
+
+    total_time = 0.0
+    for i in range(1, len(events)):
+        duration = (events[i].timestamp - events[i - 1].timestamp).total_seconds()
+        total_time += duration
     return total_time < 24 * 60 * 60
 
 

@@ -63,6 +63,8 @@ def create_event(entry: dict[str, Any]) -> Optional[SystemEvent]:
     unit = entry.get("SYSLOG_IDENTIFIER", entry.get("_SYSTEMD_UNIT", ""))
     comm = entry.get("_COMM", "")
 
+    if timestamp_usec is None:
+        return None
     timestamp = datetime.fromtimestamp(int(timestamp_usec) / 1_000_000)
     # Shutdown
     if message == "Finished System Power Off.":
@@ -97,10 +99,10 @@ def create_event(entry: dict[str, Any]) -> Optional[SystemEvent]:
     return None
 
 
-def get_auth_log() -> str | list:
+def get_auth_log() -> str | None:
     auth_log_file = "/var/log/auth.log"
     if not os.path.exists(auth_log_file) or not os.access(auth_log_file, os.R_OK):
-        return []
+        return None
     return auth_log_file
 
 
@@ -148,9 +150,11 @@ def get_login_events(auth_log_file: str) -> list[SystemEvent]:
     return events
 
 
-def parse_auth_log(start_date: Optional[datetime] = None, end_date: Optional[datetime] = None) -> list[SystemEvent]:
+def parse_auth_log(
+    start_date: Optional[datetime] = None, end_date: Optional[datetime] = None
+) -> list[SystemEvent]:
     """Parse auth.log for login/logout events"""
-    events = []
+    events: list[SystemEvent] = []
 
     auth_log_file = get_auth_log()
     if not auth_log_file:
@@ -238,7 +242,9 @@ def create_sleep_wake_event(entry: dict[str, Any]) -> Optional[SystemEvent]:
     return None
 
 
-def get_sleep_wake_events(start_date: Optional[datetime | str] = None) -> list[SystemEvent]:
+def get_sleep_wake_events(
+    start_date: Optional[datetime | str] = None,
+) -> list[SystemEvent]:
     """Get SLEEP and WAKE events from journalctl"""
     events: list[SystemEvent] = []
     try:
@@ -272,7 +278,9 @@ def get_sleep_wake_events(start_date: Optional[datetime | str] = None) -> list[S
     return events
 
 
-def extract_events_from_logs(start_date: Optional[datetime] = None, end_date: Optional[datetime] = None) -> list[SystemEvent]:
+def extract_events_from_logs(
+    start_date: Optional[datetime] = None, end_date: Optional[datetime] = None
+) -> list[SystemEvent]:
     """Extract system events from log files"""
     print_string("Extracting system events from logs...")
     if not start_date:

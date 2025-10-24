@@ -8,8 +8,8 @@ from datetime import datetime
 import getpass
 import psutil
 
-from ..sys_storage import SystemStorage
-from ..sys_events import SystemEvent, SystemEventType
+from .sys_storage import SystemStorage
+from .sys_events import SystemEvent, SystemEventType
 from ..terminal import print_string
 from typing import Optional, Any
 

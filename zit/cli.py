@@ -8,7 +8,7 @@ from .terminal import (
     time_argument,
 )
 from .storage import Storage, SubtaskStorage
-from datetime import datetime, timedelta
+from datetime import datetime
 from .events import Project, Subtask
 from .calculate import calculate_project_times
 from .print import (
@@ -28,7 +28,7 @@ from .time_utils import parse_time, verify_date, determine_date
 from importlib.metadata import version, PackageNotFoundError
 
 
-def pick_event(events):
+def pick_event(events: list[Project]) -> Project | None:   
     print_events_with_index(events)
     index = prompt_for_index()
     if index < 0 or index >= len(events):

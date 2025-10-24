@@ -252,8 +252,10 @@ def check_type(event: Event, t: type) -> bool:
     return type(event) is t
 
 
-def sort_events(events: list[Event], sub_events: list[Event]) -> list[Event]:
-    all_events = events + sub_events
+def sort_events(
+    events: Sequence[Project], sub_events: Sequence[Subtask]
+) -> list[Event]:
+    all_events: list[Event] = list(events) + list(sub_events)
     # Sort by timestamp first, then by event type (main before sub)
     all_events.sort(key=lambda x: (x.timestamp, 0 if check_type(x, Project) else 1))
     return all_events

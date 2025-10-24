@@ -1,6 +1,6 @@
 from .terminal import print_string
 from .calculate import calculate_interval, calculate_ongoing_interval
-from .events import Project, Subtask, sort_events, check_type
+from .events import Project, Subtask, sort_events
 from enum import Enum, auto
 from zit.time_utils import time_2_str, total_seconds_2_hms, interval_2_hms
 
@@ -66,16 +66,17 @@ def print_events_and_subtasks(
     for i, event in enumerate(all_events):
         str_to_print = ""
         print_note = ""
-        if check_type(event, Project):
+        if isinstance(event, Project):
             if event.name in ["STOP"]:
                 str_to_print += "  └─"
             else:
                 str_to_print += event.name + " "
             str_to_print = str_to_print.ljust(pad_length, "─")
-        else:
-            if i + 1 < len(all_events) and (
-                check_type(all_events[i + 1], Subtask)
-                or all_events[i + 1].name == "STOP"
+        elif isinstance(event, Subtask):
+            next_event = all_events[i + 1] if i + 1 < len(all_events) else None
+            if next_event is not None and (
+                isinstance(next_event, Subtask)
+                or (isinstance(next_event, Project) and next_event.name == "STOP")
             ):
                 str_to_print += "  ├─ "
                 print_note += "  │  "
@@ -86,13 +87,13 @@ def print_events_and_subtasks(
             str_to_print = str_to_print.ljust(pad_length, " ")
 
         str_to_print += f" {time_2_str(event.timestamp)}"
-        if check_type(event, Project):
+        if isinstance(event, Project):
             if event.name in project_times and event.name != "STOP":
                 time_seconds = project_times[event.name]
                 str_to_print += " | " + total_seconds_2_hms(time_seconds)
             else:
                 str_to_print += " ──────────"
-        else:
+        elif isinstance(event, Subtask):
             if i + 1 < len(all_events):
                 interval = calculate_interval(event, all_events[i + 1]).total_seconds()
             else:
@@ -103,7 +104,7 @@ def print_events_and_subtasks(
         print_string(str_to_print)
 
         if (
-            check_type(event, Subtask)
+            isinstance(event, Subtask)
             and event.note != ""
             and verbosity != VerbosityLevel.NO_NOTES
         ):
@@ -116,8 +117,8 @@ def print_events_and_subtasks(
                 print_string(printline)
             else:  # FULL_NOTES
                 note_lines = split_line(event.note, pad_length + 14)
-                for i, line in enumerate(note_lines):
-                    if i == 0:
+                for j, line in enumerate(note_lines):
+                    if j == 0:
                         print_string(print_note + f" └─ {line}")
                     else:
                         print_string(print_note + f"    {line}")

@@ -38,8 +38,9 @@ class SystemStorage:
             for row in reader:
                 if not row:
                     continue
-                row[0] = load_date(row[0])
-                event = SystemEvent.from_row(row)
+                timestamp = load_date(row[0])
+                parsed_row = [timestamp] + row[1:]
+                event = SystemEvent.from_row(parsed_row)
                 events.append(event)
 
         return self._sort_events(events)
