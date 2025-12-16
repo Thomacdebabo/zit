@@ -176,13 +176,16 @@ def add(project: str, time: str, subtask: str, note: str, yesterday: bool, date:
       zit add MEETING 1400 --yesterday
       zit add MEETING 1400 -d 2025-10-15
     """
+    day = determine_date(yesterday, date)
     try:
         event_time = parse_time(time)
+        year, month, day_num = map(int, day.split('-'))
+        event_time = event_time.replace(year=year, month=month, day=day_num)
     except ValueError as e:
         print_string(f"Error: {str(e)}")
         return
 
-    day = determine_date(yesterday, date)
+    
     storage = Storage(day)
 
     if subtask:
