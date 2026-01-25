@@ -28,7 +28,7 @@ from .time_utils import parse_time, verify_date, determine_date
 from importlib.metadata import version, PackageNotFoundError
 
 
-def pick_event(events: list[Project]) -> Project | None:   
+def pick_event(events: list[Project]) -> Project | None:
     print_events_with_index(events)
     index = prompt_for_index()
     if index < 0 or index >= len(events):
@@ -44,6 +44,9 @@ def get_version():
         return "unknown"
 
 
+DEFAULT_TASK = "DEFAULT"
+
+
 @click.group()
 @click.version_option(
     get_version(), "-v", "--version", message="Zit version: %(version)s"
@@ -54,20 +57,37 @@ def cli():
 
 
 @cli.command()
-@click.argument("project", default="DEFAULT")
-def start(project: str):
+@click.argument("project", default=DEFAULT_TASK)
+@click.option("--subtask", "--sub", "-s", is_flag=True, help="Add a subtask")
+@click.option("--note", "-n", default="", help="Add a note to the project")
+def start(project: str, subtask: bool, note: str):
     """Start tracking time for a project.
 
     Begin tracking time for the specified project. If no project name is provided,
-    uses "DEFAULT" as the project name.
+    uses DEFAULT_TASK as the project name.
 
     Examples:
       zit start meeting
     """
     try:
+        sub_storage = SubtaskStorage()
         storage = Storage()
-        storage.add_event(Project(timestamp=datetime.now(), name=project))
-        print_string(f"Started tracking time for project: {project}")
+        if subtask:
+            current_task = storage.get_current_task()
+            if current_task is None:
+                storage.add_event(Project(timestamp=datetime.now(), name=DEFAULT_TASK))
+            sub_storage.add_event(
+                Subtask(timestamp=datetime.now(), name=project, note=note)
+            )
+            print_string(f"Started tracking time for subtask: {project}")
+        else:
+            storage.add_event(Project(timestamp=datetime.now(), name=project))
+            if note:
+                sub_storage = SubtaskStorage()
+                sub_storage.add_event(
+                    Subtask(timestamp=datetime.now(), name=project + "-sub", note=note)
+                )
+            print_string(f"Started tracking time for project: {project}")
     except ValueError as e:
         print_string(f"Error: {str(e)}", err=True)
 
@@ -88,6 +108,7 @@ def stop():
 
 @cli.command()
 @time_argument
+@click.option("--subtask", "--sub", "-s", is_flag=True, help="Add a subtask")
 def lunch(time: str):
     """Start tracking time for lunch.
 
@@ -179,13 +200,12 @@ def add(project: str, time: str, subtask: str, note: str, yesterday: bool, date:
     day = determine_date(yesterday, date)
     try:
         event_time = parse_time(time)
-        year, month, day_num = map(int, day.split('-'))
+        year, month, day_num = map(int, day.split("-"))
         event_time = event_time.replace(year=year, month=month, day=day_num)
     except ValueError as e:
         print_string(f"Error: {str(e)}")
         return
 
-    
     storage = Storage(day)
 
     if subtask:
@@ -383,13 +403,13 @@ def change(subtask: str, yesterday: bool, date: str):
 
 
 @cli.command()
-@click.argument("subtask", default="DEFAULT")
+@click.argument("subtask", default=DEFAULT_TASK)
 @click.option("--note", "-n", default="", help="Add a note to the subtask")
 def sub(subtask: str, note: str):
     """Add a subtask.
 
     Add a subtask to the current project at the current time. If no subtask name
-    is provided, uses "DEFAULT" as the subtask name.
+    is provided, uses DEFAULT_TASK as the subtask name.
 
     Flags:
       -n, --note TEXT    Add a note to the subtask

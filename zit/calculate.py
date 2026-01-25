@@ -10,14 +10,21 @@ def calculate_interval(event1: Event, event2: Event) -> timedelta:
 
 def calculate_ongoing_interval(event: Event) -> float:
     now = datetime.now()
-    end_of_day = datetime(now.year, now.month, now.day, 23, 59, 59)
-    return min(
-        (now - event.timestamp).total_seconds(),
-        (end_of_day - event.timestamp).total_seconds(),
+    end_of_day = datetime(
+        event.timestamp.year, event.timestamp.month, event.timestamp.day, 23, 59, 59
+    )
+    return max(
+        min(
+            (now - event.timestamp).total_seconds(),
+            (end_of_day - event.timestamp).total_seconds(),
+        ),
+        0,
     )
 
 
-def add_project_times(project_time1: dict[str, float], project_time2: dict[str, float]) -> dict[str, float]:
+def add_project_times(
+    project_time1: dict[str, float], project_time2: dict[str, float]
+) -> dict[str, float]:
     time_sum: dict[str, float] = {}
     all_keys = set(project_time1.keys()) | set(project_time2.keys())
     for key in all_keys:
@@ -25,7 +32,9 @@ def add_project_times(project_time1: dict[str, float], project_time2: dict[str, 
     return time_sum
 
 
-def calculate_project_times(events: list[Project], exclude_projects: list[str] = [], add_ongoing: bool = True) -> tuple[dict[str, float], float, float]:
+def calculate_project_times(
+    events: list[Project], exclude_projects: list[str] = [], add_ongoing: bool = True
+) -> tuple[dict[str, float], float, float]:
     if len(events) == 0:
         return {}, 0, 0
 
