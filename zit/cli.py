@@ -108,7 +108,6 @@ def stop():
 
 @cli.command()
 @time_argument
-@click.option("--subtask", "--sub", "-s", is_flag=True, help="Add a subtask")
 def lunch(time: str):
     """Start tracking time for lunch.
 
