@@ -219,6 +219,23 @@ def add(project: str, time: str, subtask: str, note: str, yesterday: bool, date:
         print_string(f"Added project: {project} at {event_time.strftime('%H:%M')}")
 
 
+@cli.command()
+@click.argument("project")
+@click.option("--subtask", "--sub", "-s", default=None, help="Add a subtask")
+@click.option("--note", "-n", default="", help="Add a note to the project")
+def ted_start(project: str, subtask: str, note: str):
+    storage = Storage()
+    sub_storage = SubtaskStorage()
+    time_stamp = datetime.now()
+    storage.add_event(Project(timestamp=time_stamp, name=project))
+
+    if subtask:
+        sub_storage.add_event(Subtask(timestamp=time_stamp, name=subtask, note=note))
+    click.echo(
+        f"Started tracking time for project: {project}, subtask: {subtask if subtask else 'N/A'}, at {time_stamp.strftime('%H:%M')}"
+    )
+
+
 # @cli.command()
 def clear():
     """Clear all data.
