@@ -5,6 +5,8 @@ from enum import Enum, auto
 from zit.time_utils import time_2_str, total_seconds_2_hms, interval_2_hms
 
 DEFAULT_MAX_WIDTH = 70
+MARGIN = 10
+MAX_DISPLAY_NAME = DEFAULT_MAX_WIDTH - MARGIN - 2
 
 
 class VerbosityLevel(Enum):
@@ -140,6 +142,30 @@ def print_project_times(project_times: dict[str, float], verbose: bool = False) 
             + f"{total_seconds_2_hms(total_time)}"
         )
         print_string(string)
+
+
+def print_subtask_times(
+    subtask_times: dict[str, dict[str, float]], project_times: dict[str, float]
+) -> None:
+    pretty_print_title("Time per subtask:")
+    for project, time in sorted(
+        project_times.items(), key=lambda item: item[1], reverse=True
+    ):
+        print_string(
+            f"{project[: MAX_DISPLAY_NAME - 1]} -".ljust(
+                DEFAULT_MAX_WIDTH - MARGIN - 1, "-"
+            )
+            + f" {total_seconds_2_hms(time)}"
+        )
+        subtasks = subtask_times.get(project, {})
+        for subtask, total_time in sorted(
+            subtasks.items(), key=lambda item: item[1], reverse=True
+        ):
+            string = (
+                f"  {subtask[:MAX_DISPLAY_NAME]}".ljust(DEFAULT_MAX_WIDTH - MARGIN)
+                + f"{total_seconds_2_hms(total_time)}"
+            )
+            print_string(string)
 
 
 def print_ongoing_interval(event: Project) -> None:

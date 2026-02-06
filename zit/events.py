@@ -6,6 +6,7 @@ from zit.time_utils import time_2_str, total_seconds_2_hms
 from collections.abc import Iterator, Sequence
 from abc import ABC, abstractmethod
 from typing_extensions import override
+from typing import Union
 
 
 def load_date(date: str) -> datetime:
@@ -112,11 +113,36 @@ class Project(Event):
 
 class ProjectInterval(Interval):
     name: str
+    sub_intervals: list["SubtaskInterval"] = []
 
     @staticmethod
-    def from_events(start_event: Project, end_event: Project) -> "ProjectInterval":
+    def from_events(
+        start_event: Project, end_event: Project, subtasks: list["Subtask"] = []
+    ) -> "ProjectInterval":
+
+        for subtask in subtasks:
+            if (
+                subtask.timestamp < start_event.timestamp
+                or subtask.timestamp > end_event.timestamp
+            ):
+                raise ValueError(
+                    f"Subtask {subtask} is outside the interval of {start_event} and {end_event}"
+                )
+        sub_intervals = []
+        for i in range(len(subtasks)):
+            if i == len(subtasks) - 1:
+                sub_intervals.append(
+                    SubtaskInterval.from_events(subtasks[i], end_event)
+                )
+            else:
+                sub_intervals.append(
+                    SubtaskInterval.from_events(subtasks[i], subtasks[i + 1])
+                )
         return ProjectInterval(
-            start=start_event.timestamp, end=end_event.timestamp, name=start_event.name
+            start=start_event.timestamp,
+            end=end_event.timestamp,
+            name=start_event.name,
+            sub_intervals=sub_intervals,
         )
 
     @property
@@ -126,6 +152,30 @@ class ProjectInterval(Interval):
     @override
     def __str__(self) -> str:
         return f"{self.name} - {total_seconds_2_hms(self.duration)} ( {time_2_str(self.start)} -> {time_2_str(self.end)})"
+
+
+class SubtaskInterval(Interval):
+    name: str
+    note: str
+
+    @staticmethod
+    def from_events(
+        start_event: "Subtask", end_event: Union["Subtask", Project]
+    ) -> "SubtaskInterval":
+        return SubtaskInterval(
+            start=start_event.timestamp,
+            end=end_event.timestamp,
+            name=start_event.name,
+            note=start_event.note,
+        )
+
+    @property
+    def duration(self) -> float:
+        return (self.end - self.start).total_seconds()
+
+    @override
+    def __str__(self) -> str:
+        return f"{self.name} - {total_seconds_2_hms(self.duration)} ( {time_2_str(self.start)} -> {time_2_str(self.end)}) Note: {self.note}"
 
 
 class ProjectIntervalStorage(BaseModel):
@@ -149,6 +199,25 @@ class ProjectIntervalStorage(BaseModel):
             intervals.add_interval(interval)
         return intervals
 
+    @staticmethod
+    def from_all_events(events: list[Event]) -> "ProjectIntervalStorage":
+        intervals = ProjectIntervalStorage()
+        start_event: Project | None = None
+        subtasks: list["Subtask"] = []
+        for e in events:
+            if isinstance(e, Project):
+                if start_event is not None:
+                    interval = ProjectInterval.from_events(start_event, e, subtasks)
+                    intervals.add_interval(interval)
+                start_event = e
+                subtasks = []
+            elif isinstance(e, Subtask):
+                subtasks.append(e)
+        if start_event is not None:
+            interval = ProjectInterval.from_events(start_event, events[-1], subtasks)
+            intervals.add_interval(interval)
+        return intervals
+
     def add_interval(self, interval: ProjectInterval) -> None:
         if interval.name not in self.intervals:
             self.intervals[interval.name] = []
@@ -160,15 +229,24 @@ class ProjectIntervalStorage(BaseModel):
 
 class ProjectTimes(BaseModel):
     project_times: dict[str, float]
+    subtask_times: dict[str, dict[str, float]] = {}
 
     @staticmethod
     def from_intervals(intervals: ProjectIntervalStorage) -> "ProjectTimes":
         project_times: dict[str, float] = {}
+        subtask_times: dict[str, dict[str, float]] = {}
         for project, interval_list in intervals.intervals.items():
             project_times[project] = sum(
                 interval.duration for interval in interval_list
             )
-        return ProjectTimes(project_times=project_times)
+            for interval in interval_list:
+                for sub_interval in interval.sub_intervals:
+                    if project not in subtask_times:
+                        subtask_times[project] = {}
+                    if sub_interval.name not in subtask_times[project]:
+                        subtask_times[project][sub_interval.name] = 0
+                    subtask_times[project][sub_interval.name] += sub_interval.duration
+        return ProjectTimes(project_times=project_times, subtask_times=subtask_times)
 
     def add(self, other: "ProjectTimes") -> "ProjectTimes":
         combined_times: dict[str, float] = {}
@@ -179,11 +257,17 @@ class ProjectTimes(BaseModel):
             ) + other.project_times.get(key, 0)
         return ProjectTimes(project_times=combined_times)
 
-    def add_time(self, project: str, time: float) -> None:
+    def add_time(self, project: str, subtask: str | None, time: float) -> None:
         if project in self.project_times:
             self.project_times[project] += time
         else:
             self.project_times[project] = time
+        if subtask is not None:
+            if project not in self.subtask_times:
+                self.subtask_times[project] = {}
+            if subtask not in self.subtask_times[project]:
+                self.subtask_times[project][subtask] = 0
+            self.subtask_times[project][subtask] += time
 
     def total_time(
         self, exclude_projects: list[str] | None = None

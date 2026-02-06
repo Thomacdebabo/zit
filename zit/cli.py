@@ -10,11 +10,12 @@ from .terminal import (
 from .storage import Storage, SubtaskStorage
 from datetime import datetime
 from .events import Project, Subtask
-from .calculate import calculate_project_times
+from .calculate import calculate_project_times, calculate_all_times
 from .print import (
     print_intervals,
     print_ongoing_interval,
     print_project_times,
+    print_subtask_times,
     print_total_time,
     pretty_print_title,
     print_events_with_index,
@@ -153,8 +154,9 @@ def status(yesterday: bool, date: str):
     """
     day = determine_date(yesterday, date)
     storage = Storage(day)
-
+    sub_storage = SubtaskStorage(day)
     events = storage.get_events()
+    sub_events = sub_storage.get_events()
     if not events:
         print_string(f"No events found for {day}.")
         return
@@ -163,11 +165,11 @@ def status(yesterday: bool, date: str):
     print_intervals(events)
     print_ongoing_interval(events[-1])
 
-    project_times, time_sum, excluded = calculate_project_times(
-        events, exclude_projects=storage.exclude_projects
+    project_times, subtask_times, time_sum, excluded = calculate_all_times(
+        events, sub_events, exclude_projects=storage.exclude_projects
     )
 
-    print_project_times(project_times)
+    print_subtask_times(subtask_times, project_times)
     print_total_time(time_sum, excluded)
 
 
