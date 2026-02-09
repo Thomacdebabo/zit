@@ -276,6 +276,58 @@ cmd_current() {
     fi
 }
 
+# Command: ted-start
+cmd_ted_start() {
+    if [[ $# -lt 1 ]]; then
+        echo "Usage: zit ted-start PROJECT [--sub SUBTASK] [--note NOTE]" >&2
+        return 1
+    fi
+    
+    local project="$1"
+    local subtask=""
+    local note=""
+    
+    shift
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --sub|-s)
+                subtask="$2"
+                shift 2
+                ;;
+            --note|-n)
+                note="$2"
+                shift 2
+                ;;
+            *)
+                shift
+                ;;
+        esac
+    done
+    
+    ensure_zit_dir
+    local timestamp=$(get_timestamp)
+    local project_file=$(get_project_file)
+    local subtask_file=$(get_subtask_file)
+    
+    # Add project
+    echo "${timestamp},${project}" >> "${project_file}"
+    
+    # Add subtask if provided
+    if [[ -n "${subtask}" ]]; then
+        echo "${timestamp},${subtask},${note}" >> "${subtask_file}"
+    fi
+    
+    # Format time for display
+    local display_time=$(echo "${timestamp}" | cut -d' ' -f2 | cut -d':' -f1,2)
+    
+    # Print output
+    if [[ -n "${subtask}" ]]; then
+        echo "Started tracking time for project: ${project}, subtask: ${subtask}, at ${display_time}"
+    else
+        echo "Started tracking time for project: ${project}, subtask: N/A, at ${display_time}"
+    fi
+}
+
 # Main function
 main() {
     if [[ $# -eq 0 ]]; then
@@ -295,6 +347,9 @@ main() {
         echo "  sub SUBTASK               Add a subtask to current project"
         echo "    --note NOTE             Add a note"
         echo "  current                   Show current task"
+        echo "  ted-start PROJECT         Start project with optional subtask"
+        echo "    --sub SUBTASK           Add a subtask"
+        echo "    --note NOTE             Add a note"
         echo ""
         echo "Python-forwarded commands:"
         echo "  status                    Show today's status (with time calculations)"
@@ -331,6 +386,9 @@ main() {
             ;;
         current)
             cmd_current
+            ;;
+        ted-start)
+            cmd_ted_start "$@"
             ;;
         # Forward these commands to Python implementation
         status|clean|verify|remove|change|list|note|attach)
