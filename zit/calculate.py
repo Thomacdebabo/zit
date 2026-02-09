@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta
 from zit.events import Event, Project, ProjectIntervalStorage, Subtask, sort_events
-from zit.time_utils import total_seconds_2_hms
 
 
 def calculate_interval(event1: Event, event2: Event) -> timedelta:

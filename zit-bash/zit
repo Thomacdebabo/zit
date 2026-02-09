@@ -1,0 +1,347 @@
+#!/usr/bin/env bash
+
+# zit - Zimple Interval Tracker (Bash Implementation)
+# A minimal time tracking CLI tool
+
+set -euo pipefail
+
+# Configuration
+ZIT_DIR="${HOME}/.zit"
+DEFAULT_TASK="DEFAULT"
+
+# Forward to Python zit implementation
+forward_to_python_zit() {
+    # Get the directory where this script is located
+    local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    local python_zit="${script_dir}/zit-python"
+    
+    if [[ -x "$python_zit" ]]; then
+        "$python_zit" "$@"
+    else
+        echo "Error: zit-python not found in ${script_dir}" >&2
+        echo "Please install zit-python in the same directory as this script" >&2
+        return 1
+    fi
+}
+
+# Ensure the .zit directory exists
+ensure_zit_dir() {
+    mkdir -p "${ZIT_DIR}"
+}
+
+# Get current timestamp in zit format (ISO 8601 with microseconds)
+get_timestamp() {
+    date +"%Y-%m-%d %H:%M:%S.%6N"
+}
+
+# Get today's date
+get_today() {
+    date +%Y-%m-%d
+}
+
+# Get file paths
+get_project_file() {
+    local day="${1:-$(get_today)}"
+    echo "${ZIT_DIR}/${day}.csv"
+}
+
+get_subtask_file() {
+    local day="${1:-$(get_today)}"
+    echo "${ZIT_DIR}/${day}_subtasks.csv"
+}
+
+# Get current task (last non-STOP, non-LUNCH project)
+get_current_task() {
+    local project_file=$(get_project_file)
+    
+    if [[ ! -f "${project_file}" ]]; then
+        echo ""
+        return
+    fi
+    
+    # Get the last line and extract the project name
+    local last_line=$(tail -n 1 "${project_file}")
+    local last_project=$(echo "${last_line}" | cut -d',' -f2)
+    
+    # Check if it's STOP or LUNCH
+    if [[ "${last_project}" == "STOP" || "${last_project}" == "LUNCH" ]]; then
+        echo ""
+    else
+        echo "${last_project}"
+    fi
+}
+
+# Parse time in HHMM format
+parse_time() {
+    local time="$1"
+    local today=$(get_today)
+    
+    # Validate it's numeric
+    if ! [[ "${time}" =~ ^[0-9]+$ ]]; then
+        echo "Error: Time must be in HHMM format (e.g., 1200 for noon)" >&2
+        return 1
+    fi
+    
+    # Pad the time
+    if [[ ${#time} -eq 1 ]]; then
+        time="0${time}00"
+    elif [[ ${#time} -eq 2 ]]; then
+        time="${time}00"
+    elif [[ ${#time} -eq 3 ]]; then
+        time="0${time}"
+    fi
+    
+    local hour="${time:0:2}"
+    local minute="${time:2:2}"
+    
+    # Remove leading zeros for comparison (bash treats leading 0 as octal)
+    hour=$((10#$hour))
+    minute=$((10#$minute))
+    
+    # Validate ranges
+    if [[ ${hour} -lt 0 || ${hour} -gt 23 || ${minute} -lt 0 || ${minute} -gt 59 ]]; then
+        echo "Error: Invalid time values" >&2
+        return 1
+    fi
+    
+    # Re-format with proper padding
+    hour=$(printf "%02d" ${hour})
+    minute=$(printf "%02d" ${minute})
+    
+    # Return formatted timestamp
+    echo "${today} ${hour}:${minute}:00.000000"
+}
+
+# Command: start
+cmd_start() {
+    local project="${1:-${DEFAULT_TASK}}"
+    local subtask=""
+    local note=""
+    
+    # Parse options
+    shift || true
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --sub|-s)
+                subtask="$2"
+                shift 2
+                ;;
+            --note|-n)
+                note="$2"
+                shift 2
+                ;;
+            *)
+                shift
+                ;;
+        esac
+    done
+    
+    ensure_zit_dir
+    local timestamp=$(get_timestamp)
+    local project_file=$(get_project_file)
+    local subtask_file=$(get_subtask_file)
+    
+    if [[ -n "${subtask}" ]]; then
+        # Add subtask
+        local current=$(get_current_task)
+        if [[ -z "${current}" ]]; then
+            echo "${timestamp},${DEFAULT_TASK}" >> "${project_file}"
+        fi
+        echo "${timestamp},${subtask},${note}" >> "${subtask_file}"
+        echo "Started tracking time for subtask: ${subtask}"
+    else
+        # Add project
+        echo "${timestamp},${project}" >> "${project_file}"
+        if [[ -n "${note}" ]]; then
+            echo "${timestamp},${project}-sub,${note}" >> "${subtask_file}"
+        fi
+        echo "Started tracking time for project: ${project}"
+    fi
+}
+
+# Command: stop
+cmd_stop() {
+    ensure_zit_dir
+    local timestamp=$(get_timestamp)
+    local project_file=$(get_project_file)
+    
+    echo "${timestamp},STOP" >> "${project_file}"
+    echo "Stopped time tracking"
+}
+
+# Command: lunch
+cmd_lunch() {
+    local time="$1"
+    ensure_zit_dir
+    local project_file=$(get_project_file)
+    
+    if [[ -n "${time}" ]]; then
+        local timestamp=$(parse_time "${time}") || return 1
+    else
+        local timestamp=$(get_timestamp)
+    fi
+    
+    echo "${timestamp},LUNCH" >> "${project_file}"
+    echo "Started lunch time tracking"
+}
+
+# Command: add
+cmd_add() {
+    if [[ $# -lt 2 ]]; then
+        echo "Usage: zit add PROJECT TIME [--sub SUBTASK] [--note NOTE]" >&2
+        return 1
+    fi
+    
+    local project="$1"
+    local time="$2"
+    local subtask=""
+    local note=""
+    
+    shift 2
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --sub|-s)
+                subtask="$2"
+                shift 2
+                ;;
+            --note|-n)
+                note="$2"
+                shift 2
+                ;;
+            *)
+                shift
+                ;;
+        esac
+    done
+    
+    ensure_zit_dir
+    local timestamp=$(parse_time "${time}") || return 1
+    local project_file=$(get_project_file)
+    local subtask_file=$(get_subtask_file)
+    
+    if [[ -n "${subtask}" ]]; then
+        # Add subtask at specific time
+        echo "${timestamp},${subtask},${note}" >> "${subtask_file}"
+        local display_time=$(echo "${timestamp}" | cut -d' ' -f2 | cut -d':' -f1,2)
+        echo "Added subtask: ${subtask} at ${display_time}"
+    else
+        # Add project at specific time
+        echo "${timestamp},${project}" >> "${project_file}"
+        local display_time=$(echo "${timestamp}" | cut -d' ' -f2 | cut -d':' -f1,2)
+        echo "Added project: ${project} at ${display_time}"
+    fi
+}
+
+# Command: sub
+cmd_sub() {
+    local subtask="${1:-${DEFAULT_TASK}}"
+    local note=""
+    
+    shift || true
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --note|-n)
+                note="$2"
+                shift 2
+                ;;
+            *)
+                shift
+                ;;
+        esac
+    done
+    
+    ensure_zit_dir
+    local current=$(get_current_task)
+    
+    if [[ -z "${current}" ]]; then
+        echo "No current task. Operation aborted." >&2
+        return 1
+    fi
+    
+    local timestamp=$(get_timestamp)
+    local subtask_file=$(get_subtask_file)
+    
+    echo "${timestamp},${subtask},${note}" >> "${subtask_file}"
+    echo "Added subtask: ${subtask}"
+}
+
+# Command: current
+cmd_current() {
+    local current=$(get_current_task)
+    
+    if [[ -z "${current}" ]]; then
+        echo "No current task."
+    else
+        echo "Current task: ${current}"
+    fi
+}
+
+# Main function
+main() {
+    if [[ $# -eq 0 ]]; then
+        echo "zit - Zimple Interval Tracker"
+        echo ""
+        echo "Usage: zit COMMAND [OPTIONS]"
+        echo ""
+        echo "Bash-implemented commands:"
+        echo "  start [PROJECT]           Start tracking a project"
+        echo "    --sub SUBTASK           Start tracking a subtask"
+        echo "    --note NOTE             Add a note"
+        echo "  stop                      Stop tracking time"
+        echo "  lunch [TIME]              Start lunch break"
+        echo "  add PROJECT TIME          Add a project at specific time (HHMM)"
+        echo "    --sub SUBTASK           Add as subtask instead"
+        echo "    --note NOTE             Add a note"
+        echo "  sub SUBTASK               Add a subtask to current project"
+        echo "    --note NOTE             Add a note"
+        echo "  current                   Show current task"
+        echo ""
+        echo "Python-forwarded commands:"
+        echo "  status                    Show today's status (with time calculations)"
+        echo "  clean                     Clean and organize entries"
+        echo "  verify                    Verify data integrity"
+        echo "  remove                    Remove an event"
+        echo "  change                    Change an event"
+        echo "  list                      List all subtasks"
+        echo "  note                      Add note to subtask"
+        echo ""
+        echo "Run 'zit <command> --help' for more information on each command"
+        return 0
+    fi
+    
+    local command="$1"
+    shift
+    
+    case "${command}" in
+        # Bash-implemented commands
+        start)
+            cmd_start "$@"
+            ;;
+        stop)
+            cmd_stop
+            ;;
+        lunch)
+            cmd_lunch "${1:-}"
+            ;;
+        add)
+            cmd_add "$@"
+            ;;
+        sub)
+            cmd_sub "$@"
+            ;;
+        current)
+            cmd_current
+            ;;
+        # Forward these commands to Python implementation
+        status|clean|verify|remove|change|list|note|attach)
+            forward_to_python_zit "${command}" "$@"
+            ;;
+        *)
+            echo "Unknown command: ${command}" >&2
+            echo "Run 'zit' without arguments to see usage." >&2
+            return 1
+            ;;
+    esac
+}
+
+main "$@"
