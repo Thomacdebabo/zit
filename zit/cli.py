@@ -225,10 +225,18 @@ def add(project: str, time: str, subtask: str, note: str, yesterday: bool, date:
 @click.argument("project")
 @click.option("--subtask", "--sub", "-s", default=None, help="Add a subtask")
 @click.option("--note", "-n", default="", help="Add a note to the project")
-def ted_start(project: str, subtask: str, note: str):
+@click.option("--time", "-t", default=None, help="TIME (format: HHMM, HMM, HH, H)")
+def ted_start(project: str, subtask: str, note: str, time: str | None):
     storage = Storage()
     sub_storage = SubtaskStorage()
     time_stamp = datetime.now()
+    if time:
+        try:
+            time_stamp = parse_time(time)
+        except ValueError as e:
+            print_string(f"Error: {str(e)}")
+            return
+        
     storage.add_event(Project(timestamp=time_stamp, name=project))
 
     if subtask:
@@ -330,7 +338,7 @@ def verify(yesterday: bool, date: str):
     help="Remove a subtask instead of a main project",
 )
 @date_options
-def remove(subtask: str, yesterday: bool, date: str):
+def rm(subtask: str, yesterday: bool, date: str):
     """Remove an event.
 
     Remove a project or subtask event by selecting it from a list.
@@ -347,6 +355,7 @@ def remove(subtask: str, yesterday: bool, date: str):
       zit remove -s -y
       zit remove -d 2025-10-15
     """
+    # TODO: make sure subtask is also removed if the main project is removed -> ask for permission
     day = determine_date(yesterday, date)
     if subtask:
         storage = SubtaskStorage(day)
