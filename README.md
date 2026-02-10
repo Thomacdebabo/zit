@@ -8,6 +8,16 @@ Install (linux):
 ```console
 curl -sSL https://raw.githubusercontent.com/Thomacdebabo/zit/main/scripts/install_zit.sh | bash
 ```
+Install Aliases (optional linux):
+```
+# install fzf:
+sudo apt install fzf
+# from within this cloned repo:
+cp ./zit-aliases.sh ~/.zit
+# add to your bashrc file or whatever profile file you use
+echo "source ~/.zit/zit-aliases.sh" >> ~/.bashrc
+```
+
 Install (windows):
 ```console
 irm https://raw.githubusercontent.com/Thomacdebabo/zit/main/scripts/install_zit_win.ps1 -OutFile install_zit_win.ps1
