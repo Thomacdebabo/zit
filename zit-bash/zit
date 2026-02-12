@@ -117,6 +117,7 @@ cmd_start() {
     local project="${1:-${DEFAULT_TASK}}"
     local subtask=""
     local note=""
+    local time=""
     
     # Parse options
     shift || true
@@ -130,6 +131,10 @@ cmd_start() {
                 note="$2"
                 shift 2
                 ;;
+            --time|-t)
+                time="$2"
+                shift 2
+                ;;
             *)
                 shift
                 ;;
@@ -137,7 +142,11 @@ cmd_start() {
     done
     
     ensure_zit_dir
-    local timestamp=$(get_timestamp)
+    if [[ -n "${time}" ]]; then
+        local timestamp=$(parse_time "${time}") || return 1
+    else
+        local timestamp=$(get_timestamp)
+    fi
     local project_file=$(get_project_file)
     local subtask_file=$(get_subtask_file)
     
@@ -279,13 +288,14 @@ cmd_current() {
 # Command: ted-start
 cmd_ted_start() {
     if [[ $# -lt 1 ]]; then
-        echo "Usage: zit ted-start PROJECT [--sub SUBTASK] [--note NOTE]" >&2
+        echo "Usage: zit ted-start PROJECT [--sub SUBTASK] [--note NOTE] [--time|-t TIME]" >&2
         return 1
     fi
     
     local project="$1"
     local subtask=""
     local note=""
+    local time=""
     
     shift
     while [[ $# -gt 0 ]]; do
@@ -298,6 +308,10 @@ cmd_ted_start() {
                 note="$2"
                 shift 2
                 ;;
+            --time|-t)
+                time="$2"
+                shift 2
+                ;;
             *)
                 shift
                 ;;
@@ -305,7 +319,11 @@ cmd_ted_start() {
     done
     
     ensure_zit_dir
-    local timestamp=$(get_timestamp)
+    if [[ -n "${time}" ]]; then
+        local timestamp=$(parse_time "${time}") || return 1
+    else
+        local timestamp=$(get_timestamp)
+    fi
     local project_file=$(get_project_file)
     local subtask_file=$(get_subtask_file)
     
@@ -339,6 +357,7 @@ main() {
         echo "  start [PROJECT]           Start tracking a project"
         echo "    --sub SUBTASK           Start tracking a subtask"
         echo "    --note NOTE             Add a note"
+        echo "    --time TIME, -t TIME    Start at specific time (HHMM format)"
         echo "  stop                      Stop tracking time"
         echo "  lunch [TIME]              Start lunch break"
         echo "  add PROJECT TIME          Add a project at specific time (HHMM)"
@@ -350,6 +369,7 @@ main() {
         echo "  ted-start PROJECT         Start project with optional subtask"
         echo "    --sub SUBTASK           Add a subtask"
         echo "    --note NOTE             Add a note"
+        echo "    --time TIME, -t TIME    Start at specific time (HHMM format)"
         echo ""
         echo "Python-forwarded commands:"
         echo "  status                    Show today's status (with time calculations)"
@@ -391,7 +411,7 @@ main() {
             cmd_ted_start "$@"
             ;;
         # Forward these commands to Python implementation
-        status|clean|verify|remove|change|list|note|attach)
+        status|clean|verify|rm|change|list|note|attach)
             forward_to_python_zit "${command}" "$@"
             ;;
         *)
