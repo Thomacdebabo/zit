@@ -39,6 +39,46 @@ get_today() {
     date +%Y-%m-%d
 }
 
+# Get yesterday's date
+get_yesterday() {
+    date -d "yesterday" +%Y-%m-%d
+}
+
+# Parse date arguments and return the date to use
+parse_date_args() {
+    local use_yesterday=false
+    local custom_date=""
+    
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -y|--yesterday)
+                use_yesterday=true
+                shift
+                ;;
+            -d|--date)
+                custom_date="$2"
+                shift 2
+                ;;
+            *)
+                shift
+                ;;
+        esac
+    done
+    
+    if [[ -n "${custom_date}" ]]; then
+        # Validate date format
+        if ! date -d "${custom_date}" +%Y-%m-%d &>/dev/null; then
+            echo "Error: Invalid date format. Use YYYY-MM-DD" >&2
+            return 1
+        fi
+        echo "${custom_date}"
+    elif [[ "${use_yesterday}" == true ]]; then
+        get_yesterday
+    else
+        get_today
+    fi
+}
+
 # Get file paths
 get_project_file() {
     local day="${1:-$(get_today)}"
@@ -52,7 +92,8 @@ get_subtask_file() {
 
 # Get current task (last non-STOP, non-LUNCH project)
 get_current_task() {
-    local project_file=$(get_project_file)
+    local day="${1:-$(get_today)}"
+    local project_file=$(get_project_file "${day}")
     
     if [[ ! -f "${project_file}" ]]; then
         echo ""
@@ -121,6 +162,10 @@ cmd_start() {
     
     # Parse options
     shift || true
+    
+    # Determine date first by parsing all args
+    local day=$(parse_date_args "$@") || return 1
+    
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --sub|-s)
@@ -135,6 +180,11 @@ cmd_start() {
                 time="$2"
                 shift 2
                 ;;
+            -y|--yesterday|-d|--date)
+                # Skip date args (already processed)
+                shift
+                [[ $# -gt 0 && "$1" != "-"* ]] && shift || true
+                ;;
             *)
                 shift
                 ;;
@@ -147,12 +197,12 @@ cmd_start() {
     else
         local timestamp=$(get_timestamp)
     fi
-    local project_file=$(get_project_file)
-    local subtask_file=$(get_subtask_file)
+    local project_file=$(get_project_file "${day}")
+    local subtask_file=$(get_subtask_file "${day}")
     
     if [[ -n "${subtask}" ]]; then
         # Add subtask
-        local current=$(get_current_task)
+        local current=$(get_current_task "${day}")
         if [[ -z "${current}" ]]; then
             echo "${timestamp},${DEFAULT_TASK}" >> "${project_file}"
         fi
@@ -170,9 +220,11 @@ cmd_start() {
 
 # Command: stop
 cmd_stop() {
+    local day=$(parse_date_args "$@") || return 1
+    
     ensure_zit_dir
     local timestamp=$(get_timestamp)
-    local project_file=$(get_project_file)
+    local project_file=$(get_project_file "${day}")
     
     echo "${timestamp},STOP" >> "${project_file}"
     echo "Stopped time tracking"
@@ -180,9 +232,18 @@ cmd_stop() {
 
 # Command: lunch
 cmd_lunch() {
-    local time="$1"
+    local time=""
+    
+    # Parse first argument if it's not a flag
+    if [[ $# -gt 0 && ! "$1" =~ ^- ]]; then
+        time="$1"
+        shift
+    fi
+    
+    local day=$(parse_date_args "$@") || return 1
+    
     ensure_zit_dir
-    local project_file=$(get_project_file)
+    local project_file=$(get_project_file "${day}")
     
     if [[ -n "${time}" ]]; then
         local timestamp=$(parse_time "${time}") || return 1
@@ -197,7 +258,7 @@ cmd_lunch() {
 # Command: add
 cmd_add() {
     if [[ $# -lt 2 ]]; then
-        echo "Usage: zit add PROJECT TIME [--sub SUBTASK] [--note NOTE]" >&2
+        echo "Usage: zit add PROJECT TIME [--sub SUBTASK] [--note NOTE] [-y|--yesterday] [-d|--date DATE]" >&2
         return 1
     fi
     
@@ -207,6 +268,9 @@ cmd_add() {
     local note=""
     
     shift 2
+    
+    local day=$(parse_date_args "$@") || return 1
+    
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --sub|-s)
@@ -217,6 +281,11 @@ cmd_add() {
                 note="$2"
                 shift 2
                 ;;
+            -y|--yesterday|-d|--date)
+                # Skip date args (already processed)
+                shift
+                [[ $# -gt 0 && "$1" != "-"* ]] && shift || true
+                ;;
             *)
                 shift
                 ;;
@@ -225,8 +294,8 @@ cmd_add() {
     
     ensure_zit_dir
     local timestamp=$(parse_time "${time}") || return 1
-    local project_file=$(get_project_file)
-    local subtask_file=$(get_subtask_file)
+    local project_file=$(get_project_file "${day}")
+    local subtask_file=$(get_subtask_file "${day}")
     
     if [[ -n "${subtask}" ]]; then
         # Add subtask at specific time
@@ -247,11 +316,19 @@ cmd_sub() {
     local note=""
     
     shift || true
+    
+    local day=$(parse_date_args "$@") || return 1
+    
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --note|-n)
                 note="$2"
                 shift 2
+                ;;
+            -y|--yesterday|-d|--date)
+                # Skip date args (already processed)
+                shift
+                [[ $# -gt 0 && "$1" != "-"* ]] && shift || true
                 ;;
             *)
                 shift
@@ -260,7 +337,7 @@ cmd_sub() {
     done
     
     ensure_zit_dir
-    local current=$(get_current_task)
+    local current=$(get_current_task "${day}")
     
     if [[ -z "${current}" ]]; then
         echo "No current task. Operation aborted." >&2
@@ -268,7 +345,7 @@ cmd_sub() {
     fi
     
     local timestamp=$(get_timestamp)
-    local subtask_file=$(get_subtask_file)
+    local subtask_file=$(get_subtask_file "${day}")
     
     echo "${timestamp},${subtask},${note}" >> "${subtask_file}"
     echo "Added subtask: ${subtask}"
@@ -276,7 +353,9 @@ cmd_sub() {
 
 # Command: current
 cmd_current() {
-    local current=$(get_current_task)
+    local day=$(parse_date_args "$@") || return 1
+    
+    local current=$(get_current_task "${day}")
     
     if [[ -z "${current}" ]]; then
         echo "No current task."
@@ -288,7 +367,7 @@ cmd_current() {
 # Command: ted-start
 cmd_ted_start() {
     if [[ $# -lt 1 ]]; then
-        echo "Usage: zit ted-start PROJECT [--sub SUBTASK] [--note NOTE] [--time|-t TIME]" >&2
+        echo "Usage: zit ted-start PROJECT [--sub SUBTASK] [--note NOTE] [--time|-t TIME] [-y|--yesterday] [-d|--date DATE]" >&2
         return 1
     fi
     
@@ -298,6 +377,9 @@ cmd_ted_start() {
     local time=""
     
     shift
+    
+    local day=$(parse_date_args "$@") || return 1
+    
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --sub|-s)
@@ -312,6 +394,11 @@ cmd_ted_start() {
                 time="$2"
                 shift 2
                 ;;
+            -y|--yesterday|-d|--date)
+                # Skip date args (already processed)
+                shift
+                [[ $# -gt 0 && "$1" != "-"* ]] && shift || true
+                ;;
             *)
                 shift
                 ;;
@@ -324,8 +411,8 @@ cmd_ted_start() {
     else
         local timestamp=$(get_timestamp)
     fi
-    local project_file=$(get_project_file)
-    local subtask_file=$(get_subtask_file)
+    local project_file=$(get_project_file "${day}")
+    local subtask_file=$(get_subtask_file "${day}")
     
     # Add project
     echo "${timestamp},${project}" >> "${project_file}"
@@ -358,18 +445,32 @@ main() {
         echo "    --sub SUBTASK           Start tracking a subtask"
         echo "    --note NOTE             Add a note"
         echo "    --time TIME, -t TIME    Start at specific time (HHMM format)"
+        echo "    -y, --yesterday         Use yesterday's date"
+        echo "    -d, --date DATE         Use specific date (YYYY-MM-DD)"
         echo "  stop                      Stop tracking time"
+        echo "    -y, --yesterday         Use yesterday's date"
+        echo "    -d, --date DATE         Use specific date (YYYY-MM-DD)"
         echo "  lunch [TIME]              Start lunch break"
+        echo "    -y, --yesterday         Use yesterday's date"
+        echo "    -d, --date DATE         Use specific date (YYYY-MM-DD)"
         echo "  add PROJECT TIME          Add a project at specific time (HHMM)"
         echo "    --sub SUBTASK           Add as subtask instead"
         echo "    --note NOTE             Add a note"
+        echo "    -y, --yesterday         Use yesterday's date"
+        echo "    -d, --date DATE         Use specific date (YYYY-MM-DD)"
         echo "  sub SUBTASK               Add a subtask to current project"
         echo "    --note NOTE             Add a note"
+        echo "    -y, --yesterday         Use yesterday's date"
+        echo "    -d, --date DATE         Use specific date (YYYY-MM-DD)"
         echo "  current                   Show current task"
+        echo "    -y, --yesterday         Use yesterday's date"
+        echo "    -d, --date DATE         Use specific date (YYYY-MM-DD)"
         echo "  ted-start PROJECT         Start project with optional subtask"
         echo "    --sub SUBTASK           Add a subtask"
         echo "    --note NOTE             Add a note"
         echo "    --time TIME, -t TIME    Start at specific time (HHMM format)"
+        echo "    -y, --yesterday         Use yesterday's date"
+        echo "    -d, --date DATE         Use specific date (YYYY-MM-DD)"
         echo ""
         echo "Python-forwarded commands:"
         echo "  status                    Show today's status (with time calculations)"
@@ -393,10 +494,10 @@ main() {
             cmd_start "$@"
             ;;
         stop)
-            cmd_stop
+            cmd_stop "$@"
             ;;
         lunch)
-            cmd_lunch "${1:-}"
+            cmd_lunch "$@"
             ;;
         add)
             cmd_add "$@"
@@ -405,7 +506,7 @@ main() {
             cmd_sub "$@"
             ;;
         current)
-            cmd_current
+            cmd_current "$@"
             ;;
         ted-start)
             cmd_ted_start "$@"
