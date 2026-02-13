@@ -364,6 +364,152 @@ cmd_current() {
     fi
 }
 
+# Command: remove
+cmd_remove() {
+    
+    local day=$(parse_date_args "$@") || return 1
+    
+    local project_file=$(get_project_file "${day}")
+    local subtask_file=$(get_subtask_file "${day}")
+    
+    # Check if any files exist
+    local has_projects=false
+    local has_subtasks=false
+    
+    if [[ -f "${project_file}" && -s "${project_file}" ]]; then
+        has_projects=true
+    fi
+    
+    if [[ -f "${subtask_file}" && -s "${subtask_file}" ]]; then
+        has_subtasks=true
+    fi
+    
+    if [[ "${has_projects}" == false && "${has_subtasks}" == false ]]; then
+        echo "No events found for ${day}. Operation aborted." >&2
+        return 1
+    fi
+    
+    # Check if fzf is available
+    if ! command -v fzf &> /dev/null; then
+        echo "Error: fzf is not installed. Please install fzf to use this command." >&2
+        echo "Install with: sudo apt install fzf  (or brew install fzf on macOS)" >&2
+        return 1
+    fi
+    
+    # Build combined list for fzf, sorted by timestamp
+    local combined_list=""
+    
+    # Create temporary combined list with timestamp prefix for sorting
+    local temp_list=$(mktemp)
+    
+    # Add projects with P: prefix
+    if [[ "${has_projects}" == true ]]; then
+        cat -n "${project_file}" | sed 's/^[ \t]*//' | awk -F'\t' '{
+            split($2, parts, ",");
+            timestamp = parts[1];
+            name = parts[2];
+            split(timestamp, dt, " ");
+            split(dt[2], time, ":");
+            printf "%s|[P:%d] %s:%s - %s\n", timestamp, $1, time[1], time[2], name;
+        }' >> "${temp_list}"
+    fi
+    
+    # Add subtasks with S: prefix (indented)
+    if [[ "${has_subtasks}" == true ]]; then
+        cat -n "${subtask_file}" | sed 's/^[ \t]*//' | awk -F'\t' '{
+            split($2, parts, ",");
+            timestamp = parts[1];
+            name = parts[2];
+            note = parts[3];
+            split(timestamp, dt, " ");
+            split(dt[2], time, ":");
+            printf "%s|  [S:%d] %s:%s - %s", timestamp, $1, time[1], time[2], name;
+            if (note != "") printf " (%s)", note;
+            printf "\n";
+        }' >> "${temp_list}"
+    fi
+    
+    # Sort by timestamp and remove timestamp prefix
+    combined_list=$(sort -t'|' -k1,1 "${temp_list}" | cut -d'|' -f2-)
+    rm -f "${temp_list}"
+    
+    # Show combined list in fzf
+    local selection=$(echo "${combined_list}" | fzf --prompt="Select event to remove (P=project, S=subtask): " --height=40% --reverse --ansi)
+    
+    if [[ -z "${selection}" ]]; then
+        echo "No selection made. Operation aborted."
+        return 0
+    fi
+    
+    # Extract type (P or S) and line number from selection (trim leading spaces)
+    selection=$(echo "${selection}" | sed 's/^[[:space:]]*//')
+    local type_prefix=$(echo "${selection}" | sed 's/\[//' | cut -d':' -f1)
+    local line_num=$(echo "${selection}" | sed 's/\[//' | cut -d':' -f2 | cut -d']' -f1)
+    
+    # We do not need to confirm deletion
+
+    
+    # Determine which file to modify
+    if [[ "${type_prefix}" == "P" ]]; then
+        local file="${project_file}"
+        local type="project"
+        
+        # Get the timestamp and name from the selected line
+        local project_line=$(sed -n "${line_num}p" "${file}")
+        local timestamp=$(echo "${project_line}" | cut -d',' -f1)
+        local project_name=$(echo "${project_line}" | cut -d',' -f2-)
+        
+        # Find the next project timestamp
+        local next_line=$((line_num + 1))
+        local next_timestamp=$(sed -n "${next_line}p" "${file}" | cut -d',' -f1)
+        
+        # Check for orphaned subtasks (subtasks between this project and the next)
+        if [[ -f "${subtask_file}" && -s "${subtask_file}" ]]; then
+            local orphaned_subtasks=""
+            
+            if [[ -n "${next_timestamp}" ]]; then
+                # Find subtasks: timestamp > current AND timestamp < next
+                orphaned_subtasks=$(awk -F',' -v ts="${timestamp}" -v next_ts="${next_timestamp}" '
+                    $1 > ts && $1 < next_ts { print; found=1 }
+                    END { if (!found) exit 1 }
+                ' "${subtask_file}" 2>/dev/null || true)
+            else
+                # No next project - find all subtasks after current timestamp
+                orphaned_subtasks=$(awk -F',' -v ts="${timestamp}" '
+                    $1 > ts { print; found=1 }
+                    END { if (!found) exit 1 }
+                ' "${subtask_file}" 2>/dev/null || true)
+            fi
+            
+            # If there are orphaned subtasks, add a new project at the first subtask's timestamp
+            if [[ -n "${orphaned_subtasks}" ]]; then
+                local first_subtask_ts=$(echo "${orphaned_subtasks}" | head -1 | cut -d',' -f1)
+                echo "Orphaned subtasks detected. Creating new project entry at ${first_subtask_ts}"
+                echo "${first_subtask_ts},${project_name}" >> "${file}"
+                # Re-sort the file by timestamp
+                sort -t',' -k1,1 "${file}" -o "${file}"
+            fi
+            
+            # Remove subtasks with matching timestamp (same as the deleted project)
+            local matching_count=$(grep -c "^${timestamp}," "${subtask_file}" 2>/dev/null || true)
+            matching_count=${matching_count:-0}
+            
+            if [[ ${matching_count} -gt 0 ]]; then
+                echo "Found ${matching_count} subtask(s) with the same timestamp."
+                sed -i "/^${timestamp},/d" "${subtask_file}"
+                echo "Removed ${matching_count} related subtask(s)."
+            fi
+        fi
+    else
+        local file="${subtask_file}"
+        local type="subtask"
+    fi
+    
+    # Remove the line from the file
+    sed -i "${line_num}d" "${file}"
+    echo "${type^} has been removed."
+}
+
 # Command: ted-start
 cmd_ted_start() {
     if [[ $# -lt 1 ]]; then
@@ -465,6 +611,10 @@ main() {
         echo "  current                   Show current task"
         echo "    -y, --yesterday         Use yesterday's date"
         echo "    -d, --date DATE         Use specific date (YYYY-MM-DD)"
+        echo "  remove, rm                Remove an event (uses fzf)"
+        echo "    -s, --sub, --subtask    Remove a subtask instead"
+        echo "    -y, --yesterday         Use yesterday's date"
+        echo "    -d, --date DATE         Use specific date (YYYY-MM-DD)"
         echo "  ted-start PROJECT         Start project with optional subtask"
         echo "    --sub SUBTASK           Add a subtask"
         echo "    --note NOTE             Add a note"
@@ -505,14 +655,14 @@ main() {
         sub)
             cmd_sub "$@"
             ;;
-        current)
-            cmd_current "$@"
+        remove|rm)
+            cmd_remove "$@"
             ;;
         ted-start)
             cmd_ted_start "$@"
             ;;
         # Forward these commands to Python implementation
-        status|clean|verify|rm|change|list|note|attach)
+        status|clean|verify|change|list|note|attach)
             forward_to_python_zit "${command}" "$@"
             ;;
         *)
