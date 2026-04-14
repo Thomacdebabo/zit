@@ -1,17 +1,13 @@
 #!/usr/bin/env bash
 
-# zit - Zimple Interval Tracker (Bash Implementation)
-# A minimal time tracking CLI tool
+# zit - Zimple Interval Tracker (Bash implementation)
 
 set -euo pipefail
 
-# Configuration
 ZIT_DIR="${HOME}/.zit"
 DEFAULT_TASK="DEFAULT"
 
-# Forward to Python zit implementation
 forward_to_python_zit() {
-    # Get the directory where this script is located
     local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     local python_zit="${script_dir}/zit-python"
     
@@ -24,27 +20,22 @@ forward_to_python_zit() {
     fi
 }
 
-# Ensure the .zit directory exists
 ensure_zit_dir() {
     mkdir -p "${ZIT_DIR}"
 }
 
-# Get current timestamp in zit format (ISO 8601 with microseconds)
 get_timestamp() {
     date +"%Y-%m-%d %H:%M:%S.%6N"
 }
 
-# Get today's date
 get_today() {
     date +%Y-%m-%d
 }
 
-# Get yesterday's date
 get_yesterday() {
     date -d "yesterday" +%Y-%m-%d
 }
 
-# Parse date arguments and return the date to use
 parse_date_args() {
     local use_yesterday=false
     local custom_date=""
@@ -66,7 +57,6 @@ parse_date_args() {
     done
     
     if [[ -n "${custom_date}" ]]; then
-        # Validate date format
         if ! date -d "${custom_date}" +%Y-%m-%d &>/dev/null; then
             echo "Error: Invalid date format. Use YYYY-MM-DD" >&2
             return 1
@@ -79,7 +69,6 @@ parse_date_args() {
     fi
 }
 
-# Get file paths
 get_project_file() {
     local day="${1:-$(get_today)}"
     echo "${ZIT_DIR}/${day}.csv"
@@ -90,7 +79,6 @@ get_subtask_file() {
     echo "${ZIT_DIR}/${day}_subtasks.csv"
 }
 
-# Get current task (last non-STOP, non-LUNCH project)
 get_current_task() {
     local day="${1:-$(get_today)}"
     local project_file=$(get_project_file "${day}")
@@ -100,11 +88,9 @@ get_current_task() {
         return
     fi
     
-    # Get the last line and extract the project name
     local last_line=$(tail -n 1 "${project_file}")
     local last_project=$(echo "${last_line}" | cut -d',' -f2)
     
-    # Check if it's STOP or LUNCH
     if [[ "${last_project}" == "STOP" || "${last_project}" == "LUNCH" ]]; then
         echo ""
     else
@@ -112,18 +98,15 @@ get_current_task() {
     fi
 }
 
-# Parse time in HHMM format
 parse_time() {
     local time="$1"
     local day="${2:-$(get_today)}"
     
-    # Validate it's numeric
     if ! [[ "${time}" =~ ^[0-9]+$ ]]; then
         echo "Error: Time must be in HHMM format (e.g., 1200 for noon)" >&2
         return 1
     fi
     
-    # Pad the time
     if [[ ${#time} -eq 1 ]]; then
         time="0${time}00"
     elif [[ ${#time} -eq 2 ]]; then
@@ -135,35 +118,44 @@ parse_time() {
     local hour="${time:0:2}"
     local minute="${time:2:2}"
     
-    # Remove leading zeros for comparison (bash treats leading 0 as octal)
     hour=$((10#$hour))
     minute=$((10#$minute))
     
-    # Validate ranges
     if [[ ${hour} -lt 0 || ${hour} -gt 23 || ${minute} -lt 0 || ${minute} -gt 59 ]]; then
         echo "Error: Invalid time values" >&2
         return 1
     fi
     
-    # Re-format with proper padding
     hour=$(printf "%02d" ${hour})
     minute=$(printf "%02d" ${minute})
     
-    # Return formatted timestamp
     echo "${day} ${hour}:${minute}:00.000000"
 }
 
-# Command: start
+resolve_timestamp() {
+    local time="$1"
+    local day="$2"
+
+    if [[ -n "${time}" ]]; then
+        parse_time "${time}" "${day}"
+    else
+        get_timestamp
+    fi
+}
+
+format_display_time() {
+    local timestamp="$1"
+    echo "${timestamp}" | cut -d' ' -f2 | cut -d':' -f1,2
+}
+
 cmd_start() {
     local project="${1:-${DEFAULT_TASK}}"
     local subtask=""
     local note=""
     local time=""
     
-    # Parse options
     shift || true
     
-    # Determine date first by parsing all args
     local day
     day=$(parse_date_args "$@") || return 1
     
@@ -182,7 +174,6 @@ cmd_start() {
                 shift 2
                 ;;
             -y|--yesterday|-d|--date)
-                # Skip date args (already processed)
                 shift
                 [[ $# -gt 0 && "$1" != "-"* ]] && shift || true
                 ;;
@@ -193,17 +184,12 @@ cmd_start() {
     done
     
     ensure_zit_dir
-    if [[ -n "${time}" ]]; then
         local timestamp
-        timestamp=$(parse_time "${time}" "${day}") || return 1
-    else
-        local timestamp=$(get_timestamp)
-    fi
+        timestamp=$(resolve_timestamp "${time}" "${day}") || return 1
     local project_file=$(get_project_file "${day}")
     local subtask_file=$(get_subtask_file "${day}")
     
     if [[ -n "${subtask}" ]]; then
-        # Add subtask
         local current=$(get_current_task "${day}")
         if [[ -z "${current}" ]]; then
             echo "${timestamp},${DEFAULT_TASK}" >> "${project_file}"
@@ -211,7 +197,6 @@ cmd_start() {
         echo "${timestamp},${subtask},${note}" >> "${subtask_file}"
         echo "Started tracking time for subtask: ${subtask}"
     else
-        # Add project
         echo "${timestamp},${project}" >> "${project_file}"
         if [[ -n "${note}" ]]; then
             echo "${timestamp},${project}-sub,${note}" >> "${subtask_file}"
@@ -220,7 +205,6 @@ cmd_start() {
     fi
 }
 
-# Command: stop
 cmd_stop() {
     local day
     day=$(parse_date_args "$@") || return 1
@@ -233,11 +217,9 @@ cmd_stop() {
     echo "Stopped time tracking"
 }
 
-# Command: lunch
 cmd_lunch() {
     local time=""
     
-    # Parse first argument if it's not a flag
     if [[ $# -gt 0 && ! "$1" =~ ^- ]]; then
         time="$1"
         shift
@@ -248,19 +230,13 @@ cmd_lunch() {
     
     ensure_zit_dir
     local project_file=$(get_project_file "${day}")
-    
-    if [[ -n "${time}" ]]; then
-        local timestamp
-        timestamp=$(parse_time "${time}" "${day}") || return 1
-    else
-        local timestamp=$(get_timestamp)
-    fi
+    local timestamp
+    timestamp=$(resolve_timestamp "${time}" "${day}") || return 1
     
     echo "${timestamp},LUNCH" >> "${project_file}"
     echo "Started lunch time tracking"
 }
 
-# Command: add
 cmd_add() {
     if [[ $# -lt 2 ]]; then
         echo "Usage: zit add PROJECT TIME [--sub SUBTASK] [--note NOTE] [-y|--yesterday] [-d|--date DATE]" >&2
@@ -288,7 +264,6 @@ cmd_add() {
                 shift 2
                 ;;
             -y|--yesterday|-d|--date)
-                # Skip date args (already processed)
                 shift
                 [[ $# -gt 0 && "$1" != "-"* ]] && shift || true
                 ;;
@@ -305,19 +280,18 @@ cmd_add() {
     local subtask_file=$(get_subtask_file "${day}")
     
     if [[ -n "${subtask}" ]]; then
-        # Add subtask at specific time
         echo "${timestamp},${subtask},${note}" >> "${subtask_file}"
-        local display_time=$(echo "${timestamp}" | cut -d' ' -f2 | cut -d':' -f1,2)
+        local display_time
+        display_time=$(format_display_time "${timestamp}")
         echo "Added subtask: ${subtask} at ${display_time}"
     else
-        # Add project at specific time
         echo "${timestamp},${project}" >> "${project_file}"
-        local display_time=$(echo "${timestamp}" | cut -d' ' -f2 | cut -d':' -f1,2)
+        local display_time
+        display_time=$(format_display_time "${timestamp}")
         echo "Added project: ${project} at ${display_time}"
     fi
 }
 
-# Command: sub
 cmd_sub() {
     local subtask="${1:-${DEFAULT_TASK}}"
     local note=""
@@ -334,7 +308,6 @@ cmd_sub() {
                 shift 2
                 ;;
             -y|--yesterday|-d|--date)
-                # Skip date args (already processed)
                 shift
                 [[ $# -gt 0 && "$1" != "-"* ]] && shift || true
                 ;;
@@ -359,7 +332,6 @@ cmd_sub() {
     echo "Added subtask: ${subtask}"
 }
 
-# Command: current
 cmd_current() {
     local day
     day=$(parse_date_args "$@") || return 1
@@ -373,7 +345,6 @@ cmd_current() {
     fi
 }
 
-# Command: remove
 cmd_remove() {
     
     local day
@@ -382,7 +353,6 @@ cmd_remove() {
     local project_file=$(get_project_file "${day}")
     local subtask_file=$(get_subtask_file "${day}")
     
-    # Check if any files exist
     local has_projects=false
     local has_subtasks=false
     
@@ -399,20 +369,15 @@ cmd_remove() {
         return 1
     fi
     
-    # Check if fzf is available
     if ! command -v fzf &> /dev/null; then
         echo "Error: fzf is not installed. Please install fzf to use this command." >&2
         echo "Install with: sudo apt install fzf  (or brew install fzf on macOS)" >&2
         return 1
     fi
     
-    # Build combined list for fzf, sorted by timestamp
     local combined_list=""
-    
-    # Create temporary combined list with timestamp prefix for sorting
     local temp_list=$(mktemp)
     
-    # Add projects with P: prefix
     if [[ "${has_projects}" == true ]]; then
         cat -n "${project_file}" | sed 's/^[ \t]*//' | awk -F'\t' '{
             split($2, parts, ",");
@@ -424,7 +389,6 @@ cmd_remove() {
         }' >> "${temp_list}"
     fi
     
-    # Add subtasks with S: prefix (indented)
     if [[ "${has_subtasks}" == true ]]; then
         cat -n "${subtask_file}" | sed 's/^[ \t]*//' | awk -F'\t' '{
             split($2, parts, ",");
@@ -439,11 +403,9 @@ cmd_remove() {
         }' >> "${temp_list}"
     fi
     
-    # Sort by timestamp and remove timestamp prefix
     combined_list=$(sort -t'|' -k1,1 "${temp_list}" | cut -d'|' -f2-)
     rm -f "${temp_list}"
     
-    # Show combined list in fzf
     local selection=$(echo "${combined_list}" | fzf --prompt="Select event to remove (P=project, S=subtask): " --height=40% --reverse --ansi)
     
     if [[ -z "${selection}" ]]; then
@@ -451,56 +413,43 @@ cmd_remove() {
         return 0
     fi
     
-    # Extract type (P or S) and line number from selection (trim leading spaces)
     selection=$(echo "${selection}" | sed 's/^[[:space:]]*//')
     local type_prefix=$(echo "${selection}" | sed 's/\[//' | cut -d':' -f1)
     local line_num=$(echo "${selection}" | sed 's/\[//' | cut -d':' -f2 | cut -d']' -f1)
-    
-    # We do not need to confirm deletion
 
-    
-    # Determine which file to modify
     if [[ "${type_prefix}" == "P" ]]; then
         local file="${project_file}"
         local type="project"
         
-        # Get the timestamp and name from the selected line
         local project_line=$(sed -n "${line_num}p" "${file}")
         local timestamp=$(echo "${project_line}" | cut -d',' -f1)
         local project_name=$(echo "${project_line}" | cut -d',' -f2-)
         
-        # Find the next project timestamp
         local next_line=$((line_num + 1))
         local next_timestamp=$(sed -n "${next_line}p" "${file}" | cut -d',' -f1)
         
-        # Check for orphaned subtasks (subtasks between this project and the next)
         if [[ -f "${subtask_file}" && -s "${subtask_file}" ]]; then
             local orphaned_subtasks=""
             
             if [[ -n "${next_timestamp}" ]]; then
-                # Find subtasks: timestamp > current AND timestamp < next
                 orphaned_subtasks=$(awk -F',' -v ts="${timestamp}" -v next_ts="${next_timestamp}" '
                     $1 > ts && $1 < next_ts { print; found=1 }
                     END { if (!found) exit 1 }
                 ' "${subtask_file}" 2>/dev/null || true)
             else
-                # No next project - find all subtasks after current timestamp
                 orphaned_subtasks=$(awk -F',' -v ts="${timestamp}" '
                     $1 > ts { print; found=1 }
                     END { if (!found) exit 1 }
                 ' "${subtask_file}" 2>/dev/null || true)
             fi
             
-            # If there are orphaned subtasks, add a new project at the first subtask's timestamp
             if [[ -n "${orphaned_subtasks}" ]]; then
                 local first_subtask_ts=$(echo "${orphaned_subtasks}" | head -1 | cut -d',' -f1)
                 echo "Orphaned subtasks detected. Creating new project entry at ${first_subtask_ts}"
                 echo "${first_subtask_ts},${project_name}" >> "${file}"
-                # Re-sort the file by timestamp
                 sort -t',' -k1,1 "${file}" -o "${file}"
             fi
             
-            # Remove subtasks with matching timestamp (same as the deleted project)
             local matching_count=$(grep -c "^${timestamp}," "${subtask_file}" 2>/dev/null || true)
             matching_count=${matching_count:-0}
             
@@ -515,12 +464,10 @@ cmd_remove() {
         local type="subtask"
     fi
     
-    # Remove the line from the file
     sed -i "${line_num}d" "${file}"
     echo "${type^} has been removed."
 }
 
-# Command: ted-start
 cmd_ted_start() {
     if [[ $# -lt 1 ]]; then
         echo "Usage: zit ted-start PROJECT [--sub SUBTASK] [--note NOTE] [--time|-t TIME] [-y|--yesterday] [-d|--date DATE]" >&2
@@ -552,7 +499,6 @@ cmd_ted_start() {
                 shift 2
                 ;;
             -y|--yesterday|-d|--date)
-                # Skip date args (already processed)
                 shift
                 [[ $# -gt 0 && "$1" != "-"* ]] && shift || true
                 ;;
@@ -563,27 +509,20 @@ cmd_ted_start() {
     done
     
     ensure_zit_dir
-    if [[ -n "${time}" ]]; then
         local timestamp
-        timestamp=$(parse_time "${time}" "${day}") || return 1
-    else
-        local timestamp=$(get_timestamp)
-    fi
+        timestamp=$(resolve_timestamp "${time}" "${day}") || return 1
     local project_file=$(get_project_file "${day}")
     local subtask_file=$(get_subtask_file "${day}")
-    
-    # Add project
+
     echo "${timestamp},${project}" >> "${project_file}"
     
-    # Add subtask if provided
     if [[ -n "${subtask}" ]]; then
         echo "${timestamp},${subtask},${note}" >> "${subtask_file}"
     fi
     
-    # Format time for display
-    local display_time=$(echo "${timestamp}" | cut -d' ' -f2 | cut -d':' -f1,2)
+        local display_time
+        display_time=$(format_display_time "${timestamp}")
     
-    # Print output
     if [[ -n "${subtask}" ]]; then
         echo "Started tracking time for project: ${project}, subtask: ${subtask}, at ${display_time}"
     else
@@ -591,7 +530,6 @@ cmd_ted_start() {
     fi
 }
 
-# Main function
 main() {
     if [[ $# -eq 0 ]]; then
         echo "zit - Zimple Interval Tracker"
@@ -651,7 +589,6 @@ main() {
     shift
     
     case "${command}" in
-        # Bash-implemented commands
         start)
             cmd_start "$@"
             ;;
@@ -673,7 +610,6 @@ main() {
         ted-start)
             cmd_ted_start "$@"
             ;;
-        # Forward these commands to Python implementation
         status|clean|verify|change|list|note|attach)
             forward_to_python_zit "${command}" "$@"
             ;;
